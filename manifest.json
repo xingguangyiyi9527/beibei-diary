@@ -1,0 +1,26 @@
+{
+  "name": "杯杯日记 · 咖啡奶茶打卡日历",
+  "short_name": "杯杯日记",
+  "description": "记录每天喝的咖啡与奶茶，看看这个月的杯数、花费和心情。",
+  "lang": "zh-CN",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FFF8F1",
+  "theme_color": "#FFF8F1",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
