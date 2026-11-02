@@ -1,5 +1,5 @@
 /* 杯杯日记 · 离线缓存（仅在 http/https 下生效，file:// 打开本身即可离线使用） */
-var CACHE_NAME = 'bgbj-cache-v1';
+var CACHE_NAME = 'bgbj-cache-v2';
 var ASSETS = ['./', './index.html', './manifest.json', './icon-192.png', './icon-512.png', './icon-180.png'];
 
 self.addEventListener('install', function (event) {
