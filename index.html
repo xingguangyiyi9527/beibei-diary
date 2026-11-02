@@ -1,0 +1,2514 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>杯杯日记 · 咖啡奶茶打卡日历</title>
+<meta name="description" content="记录每天喝的咖啡、奶茶，看看这个月的杯数、花费与心情。数据只保存在本机。">
+<meta name="theme-color" content="#FFF8F1" id="metaTheme">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="杯杯日记">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-180.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<script>
+  /* 尽早应用主题，避免首屏闪烁 */
+  try {
+    var savedTheme = localStorage.getItem('bgbj.theme');
+    var prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    document.documentElement.dataset.theme = (savedTheme === 'light' || savedTheme === 'dark')
+      ? savedTheme : (prefersDark ? 'dark' : 'light');
+  } catch (e) {}
+</script>
+<style>
+/* ============================================================
+   杯杯日记 · 样式
+   结构：主题变量 / 基础 / 头部 / 月份 / 日历 / 统计 / 数据备份
+        / 记录面板 / 表单 / 提示条
+   ============================================================ */
+
+/* ---------- 主题变量 ---------- */
+:root {
+  --bg: #FFF8F1;
+  --bg-glass: rgba(255, 248, 241, .84);
+  --card: #FFFFFF;
+  --card-soft: #FFF1E1;
+  --text: #2E231A;
+  --muted: #8D7B69;
+  --faint: #BDAB98;
+  --line: #F0E1CF;
+
+  --coffee: #C6783C;
+  --tea: #D5769B;
+  --other: #63A99A;
+  --coffee-tint: rgba(198, 120, 60, .12);
+  --tea-tint: rgba(213, 118, 155, .12);
+  --other-tint: rgba(99, 169, 154, .12);
+
+  --accent: #B05E2A;
+  --accent-soft: rgba(176, 94, 42, .11);
+  --weekend: #C1688A;
+  --primary-grad: linear-gradient(135deg, #D98F50, #B25F2B);
+  --on-primary: #FFF8F0;
+
+  --blob-1: rgba(213, 118, 155, .16);
+  --blob-2: rgba(198, 120, 60, .19);
+  --blob-3: rgba(99, 169, 154, .13);
+  --shadow: 0 14px 40px rgba(123, 84, 48, .12), 0 2px 8px rgba(123, 84, 48, .05);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+  --bg: #151110;
+  --bg-glass: rgba(21, 17, 16, .84);
+  --card: #201A16;
+  --card-soft: #2A231D;
+  --text: #F4EBE1;
+  --muted: #A99786;
+  --faint: #7B6D60;
+  --line: #342A22;
+
+  --coffee: #E7A16A;
+  --tea: #EE99B7;
+  --other: #8ACBBA;
+  --coffee-tint: rgba(231, 161, 106, .15);
+  --tea-tint: rgba(238, 153, 183, .15);
+  --other-tint: rgba(138, 203, 186, .15);
+
+  --accent: #ECA96E;
+  --accent-soft: rgba(236, 169, 110, .15);
+  --weekend: #E996B4;
+  --primary-grad: linear-gradient(135deg, #F0B97E, #DD9551);
+  --on-primary: #2B1B0F;
+
+  --blob-1: rgba(238, 153, 183, .10);
+  --blob-2: rgba(231, 161, 106, .12);
+  --blob-3: rgba(138, 203, 186, .09);
+  --shadow: 0 16px 44px rgba(0, 0, 0, .45);
+  color-scheme: dark;
+}
+
+/* ---------- 基础 ---------- */
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "HarmonyOS Sans SC",
+    "Hiragino Sans GB", "Microsoft YaHei", "Segoe UI", sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+  overscroll-behavior-y: contain;
+}
+
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background:
+    radial-gradient(52vw 38vh at 92% -8%, var(--blob-1), transparent 70%),
+    radial-gradient(62vw 44vh at -12% 6%, var(--blob-2), transparent 72%),
+    radial-gradient(52vw 40vh at 55% 108%, var(--blob-3), transparent 70%);
+}
+
+button,
+input,
+textarea { font-family: inherit; }
+
+button { cursor: pointer; }
+
+[hidden] { display: none !important; }
+
+.app {
+  width: 100%;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: 0 16px calc(20px + var(--safe-bottom));
+}
+
+/* ---------- 顶部 ---------- */
+.top {
+  position: sticky;
+  top: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin: 0 -16px;
+  padding: calc(10px + env(safe-area-inset-top, 0px)) 16px 10px;
+  background: var(--bg-glass);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  min-width: 0;
+}
+
+.brand-mark {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 15px;
+  color: #FFF8F0;
+  background: linear-gradient(145deg, #E2A26B, #B5632E);
+  box-shadow: 0 8px 18px rgba(181, 99, 46, .25);
+  transform: rotate(-4deg);
+}
+
+.brand-mark svg { width: 24px; height: 24px; }
+
+.brand-text { min-width: 0; }
+
+.brand-text h1 {
+  margin: 0;
+  font-size: 19px;
+  font-weight: 800;
+  letter-spacing: -.01em;
+  line-height: 1.2;
+}
+
+.brand-text p {
+  margin: 3px 0 0;
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: .03em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.icon-btn {
+  width: 40px;
+  height: 40px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--card);
+  color: var(--muted);
+  box-shadow: 0 3px 10px rgba(90, 60, 30, .04);
+  transition: transform .18s, color .18s;
+}
+
+.icon-btn svg { width: 19px; height: 19px; }
+.icon-btn:active { transform: scale(.92); }
+
+.main { display: block; }
+
+/* ---------- 月份切换 ---------- */
+.month-bar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 20px 2px 14px;
+}
+
+.month-label {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+}
+
+.month-label h2 {
+  margin: 0;
+  font-size: 30px;
+  font-weight: 850;
+  letter-spacing: -.04em;
+  line-height: 1;
+}
+
+.month-label span {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.month-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.nav-btn {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--card);
+  color: var(--muted);
+  transition: transform .16s, background .16s;
+}
+
+.nav-btn svg { width: 15px; height: 15px; }
+.nav-btn:active { transform: scale(.9); background: var(--card-soft); }
+
+.today-btn {
+  height: 32px;
+  padding: 0 12px;
+  border: 1px solid var(--accent-soft);
+  border-radius: 16px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  transition: transform .16s;
+}
+
+.today-btn:active { transform: scale(.94); }
+
+/* ---------- 首次引导 ---------- */
+.tip {
+  display: flex;
+  align-items: flex-start;
+  gap: 9px;
+  margin-bottom: 12px;
+  padding: 11px 12px;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background: linear-gradient(135deg, var(--accent-soft), var(--tea-tint));
+  animation: fadeUp .4s ease both;
+}
+
+.tip-emoji { font-size: 15px; line-height: 1.45; }
+
+.tip p {
+  flex: 1;
+  margin: 0;
+  font-size: 11.5px;
+  line-height: 1.6;
+  color: var(--muted);
+}
+
+.tip button {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.tip.hide {
+  opacity: 0;
+  transform: translateY(-6px);
+  transition: opacity .25s, transform .25s;
+}
+
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- 日历 ---------- */
+.cal-card {
+  position: relative;
+  overflow: hidden;
+  padding: 14px 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 28px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+
+.weekdays {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 4px;
+  padding: 2px 0 9px;
+}
+
+.weekdays span {
+  text-align: center;
+  font-size: 10.5px;
+  font-weight: 600;
+  letter-spacing: .08em;
+  color: var(--faint);
+}
+
+.weekdays span:nth-child(6),
+.weekdays span:nth-child(7) { color: var(--weekend); opacity: .75; }
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 2px 3px;
+  will-change: transform;
+}
+
+.grid.enter-next { animation: slideNext .34s cubic-bezier(.22, 1, .36, 1); }
+.grid.enter-prev { animation: slidePrev .34s cubic-bezier(.22, 1, .36, 1); }
+
+@keyframes slideNext {
+  from { opacity: .35; transform: translateX(16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slidePrev {
+  from { opacity: .35; transform: translateX(-16px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.day {
+  position: relative;
+  height: 56px;
+  padding: 7px 0 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: inherit;
+  font-family: inherit;
+  transition: background .18s, transform .12s;
+}
+
+.day .num {
+  font-size: 11.5px;
+  font-weight: 650;
+  line-height: 1;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.day.other { opacity: .27; pointer-events: none; }
+.day:active { transform: scale(.93); }
+
+.day.has[data-dominant="coffee"] { background: var(--coffee-tint); }
+.day.has[data-dominant="tea"] { background: var(--tea-tint); }
+.day.has[data-dominant="other"] { background: var(--other-tint); }
+
+.day.today {
+  background: var(--card-soft);
+  box-shadow: inset 0 0 0 1.5px var(--accent);
+}
+
+.day.today .num { color: var(--accent); font-weight: 800; }
+
+.day.selected { box-shadow: inset 0 0 0 2px var(--accent); }
+
+.cups {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  height: 19px;
+  margin-top: 4px;
+}
+
+.cup {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  filter: drop-shadow(0 1px 1px rgba(0, 0, 0, .06));
+}
+
+.cups .cup + .cup { margin-left: -4px; }
+.cup.coffee { color: var(--coffee); }
+.cup.tea { color: var(--tea); }
+.cup.other { color: var(--other); }
+
+.cups.bounce { animation: bump .62s cubic-bezier(.34, 1.56, .64, 1); }
+
+@keyframes bump {
+  0%, 100% { transform: translateY(0); }
+  30% { transform: translateY(-5px) scale(1.1); }
+  55% { transform: translateY(1px) scale(.97); }
+  75% { transform: translateY(-2px); }
+}
+
+.count {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-width: 14px;
+  height: 12px;
+  padding: 0 3px;
+  border-radius: 7px;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 8px;
+  font-weight: 700;
+  line-height: 12px;
+  text-align: center;
+  letter-spacing: -.02em;
+}
+
+.cal-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 11px 6px 2px;
+  border-top: 1px solid var(--line);
+}
+
+.legend { display: flex; gap: 9px; }
+
+.legend span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9.5px;
+  color: var(--muted);
+}
+
+.dot {
+  width: 6px;
+  height: 6px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+}
+
+.dot.coffee { background: var(--coffee); }
+.dot.tea { background: var(--tea); }
+.dot.other { background: var(--other); }
+
+.cal-hint {
+  font-size: 9.5px;
+  color: var(--faint);
+  white-space: nowrap;
+}
+
+/* ---------- 统计面板 ---------- */
+.panel {
+  margin-top: 14px;
+  padding: 17px 17px 16px;
+  border: 1px solid var(--line);
+  border-radius: 26px;
+  background: var(--card);
+  box-shadow: var(--shadow);
+}
+
+.panel-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.panel-head h2 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 800;
+  letter-spacing: -.01em;
+}
+
+.panel-sub {
+  font-size: 10px;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  margin-top: 14px;
+  padding: 12px 0;
+  border-radius: 18px;
+  background: var(--card-soft);
+}
+
+.metric {
+  position: relative;
+  padding: 2px 4px;
+  text-align: center;
+}
+
+.metric + .metric::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 12%;
+  bottom: 12%;
+  width: 1px;
+  background: var(--line);
+}
+
+.metric-val {
+  font-size: 19px;
+  font-weight: 850;
+  line-height: 1.15;
+  letter-spacing: -.03em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.metric-val span {
+  margin-left: 2px;
+  font-size: 9.5px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--muted);
+}
+
+.metric-label {
+  margin-top: 5px;
+  font-size: 9.5px;
+  letter-spacing: .02em;
+  color: var(--muted);
+}
+
+.dash { color: var(--faint); font-weight: 650; }
+
+.fav {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--accent-soft);
+  font-size: 12px;
+  color: var(--text);
+  line-height: 1.35;
+}
+
+.fav-cup { width: 16px; height: 16px; flex: 0 0 auto; color: var(--accent); }
+.fav b { font-weight: 800; }
+.fav span { color: var(--muted); }
+
+.dist-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-top: 16px;
+}
+
+.dist-head h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.dist-head span { font-size: 9px; color: var(--faint); }
+
+.dist-body {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-top: 10px;
+}
+
+.donut {
+  position: relative;
+  width: 112px;
+  height: 112px;
+  flex: 0 0 auto;
+}
+
+.donut-svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.donut-svg circle { fill: none; stroke-width: 13; }
+.donut-track { stroke: var(--card-soft); }
+
+.donut-seg {
+  stroke-linecap: butt;
+  transition: stroke-dasharray .5s ease, stroke-dashoffset .5s ease;
+}
+
+.donut-seg.coffee { stroke: var(--coffee); }
+.donut-seg.tea { stroke: var(--tea); }
+.donut-seg.other { stroke: var(--other); }
+
+.donut-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+}
+
+.donut-center b {
+  font-size: 22px;
+  font-weight: 850;
+  letter-spacing: -.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.donut-center span {
+  margin-top: 4px;
+  font-size: 9px;
+  color: var(--muted);
+}
+
+.dist-legend {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.dist-legend li {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.dist-legend .dot { width: 7px; height: 7px; }
+.dist-legend .name { color: var(--text); font-weight: 600; }
+
+.dist-legend b {
+  margin-left: auto;
+  font-weight: 750;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.dist-legend .pct {
+  width: 30px;
+  text-align: right;
+  font-size: 9.5px;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+}
+
+.stats-empty {
+  margin-top: 12px;
+  padding: 14px 12px;
+  border-radius: 14px;
+  background: var(--card-soft);
+  color: var(--muted);
+  font-size: 11.5px;
+  line-height: 1.7;
+  text-align: center;
+}
+
+/* ---------- 数据备份 ---------- */
+.data-panel { padding: 16px 17px; }
+
+.data-head h2 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 800;
+}
+
+.data-head p {
+  margin: 4px 0 0;
+  font-size: 10.5px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+
+.data-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.ghost-btn {
+  flex: 1;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+  transition: transform .16s, background .16s;
+}
+
+.ghost-btn svg { width: 15px; height: 15px; }
+.ghost-btn:active { transform: scale(.97); background: var(--card-soft); }
+
+.footnote {
+  margin: 18px 0 4px;
+  text-align: center;
+  font-size: 9.5px;
+  letter-spacing: .04em;
+  color: var(--faint);
+}
+
+/* ---------- 记录面板（底部弹层） ---------- */
+.backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  background: rgba(35, 23, 14, .44);
+  -webkit-backdrop-filter: blur(4px);
+  backdrop-filter: blur(4px);
+  opacity: 0;
+  transition: opacity .26s ease;
+}
+
+.backdrop.open { opacity: 1; }
+
+.sheet {
+  position: fixed;
+  left: 50%;
+  bottom: 0;
+  z-index: 90;
+  width: min(520px, 100%);
+  max-height: 90vh;
+  display: flex;
+  flex-direction: column;
+  padding-top: 8px;
+  border: 1px solid var(--line);
+  border-bottom: 0;
+  border-radius: 26px 26px 0 0;
+  background: var(--card);
+  box-shadow: 0 -18px 50px rgba(40, 24, 12, .25);
+  transform: translate(-50%, 105%);
+  transition: transform .34s cubic-bezier(.22, 1, .36, 1);
+  will-change: transform;
+}
+
+.sheet.open { transform: translate(-50%, 0); }
+
+.grabber {
+  width: 38px;
+  height: 4px;
+  flex: 0 0 auto;
+  margin: 2px auto 6px;
+  border-radius: 2px;
+  background: var(--line);
+}
+
+.sheet-head {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 4px 20px 12px;
+}
+
+.sheet-head h2 {
+  margin: 0;
+  font-size: 21px;
+  font-weight: 850;
+  letter-spacing: -.03em;
+}
+
+.sheet-head p {
+  margin: 4px 0 0;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.sheet-close {
+  width: 32px;
+  height: 32px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  background: var(--card-soft);
+  color: var(--muted);
+}
+
+.sheet-close svg { width: 14px; height: 14px; }
+
+.sheet-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  padding: 0 20px calc(22px + var(--safe-bottom));
+}
+
+.day-records {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rec-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 11px 11px 11px 12px;
+  border-radius: 16px;
+  background: var(--card-soft);
+  animation: itemIn .3s ease both;
+}
+
+@keyframes itemIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.rec-icon {
+  width: 34px;
+  height: 34px;
+  flex: 0 0 auto;
+  display: grid;
+  place-items: center;
+  border-radius: 11px;
+}
+
+.rec-icon.coffee { background: var(--coffee-tint); color: var(--coffee); }
+.rec-icon.tea { background: var(--tea-tint); color: var(--tea); }
+.rec-icon.other { background: var(--other-tint); color: var(--other); }
+.rec-icon .cup { width: 18px; height: 18px; filter: none; }
+
+.rec-main { flex: 1; min-width: 0; }
+
+.rec-top {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.rec-name { font-size: 13.5px; font-weight: 750; }
+
+.sample-tag {
+  padding: 1px 5px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: var(--card);
+  color: var(--faint);
+  font-size: 8px;
+  font-weight: 600;
+}
+
+.rec-price {
+  margin-left: auto;
+  font-size: 12px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+
+.rec-spec {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  margin-top: 3px;
+  font-size: 10.5px;
+  color: var(--muted);
+}
+
+.rec-spec .mood { font-size: 12px; margin-left: 1px; }
+
+.rec-note {
+  margin-top: 4px;
+  font-size: 11px;
+  line-height: 1.5;
+  color: var(--muted);
+  word-break: break-word;
+}
+
+.rec-actions {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.rec-actions button {
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--card);
+  color: var(--muted);
+  transition: transform .15s, color .15s;
+}
+
+.rec-actions button svg { width: 12px; height: 12px; }
+.rec-actions button:active { transform: scale(.9); }
+.rec-actions [data-action="delete"]:active { color: #D15757; }
+
+.add-btn {
+  width: 100%;
+  height: 46px;
+  margin-top: 10px;
+  border: 1.5px dashed var(--accent-soft);
+  border-radius: 14px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 750;
+  transition: transform .18s;
+}
+
+.add-btn:active { transform: scale(.98); }
+
+.empty-day {
+  padding: 16px 0 12px;
+  text-align: center;
+}
+
+.empty-day svg {
+  width: 54px;
+  height: 54px;
+  color: var(--faint);
+  opacity: .8;
+}
+
+.empty-day p {
+  margin: 6px 0 0;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.empty-day span {
+  display: block;
+  margin-top: 4px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.sheet-foot-note {
+  margin: 14px 0 2px;
+  text-align: center;
+  font-size: 9.5px;
+  color: var(--faint);
+  letter-spacing: .03em;
+}
+
+/* ---------- 记录表单 ---------- */
+.record-form {
+  margin-top: 12px;
+  padding: 15px 14px 14px;
+  border-radius: 20px;
+  background: var(--card-soft);
+  animation: formIn .3s ease both;
+}
+
+@keyframes formIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.form-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.form-head span { font-size: 13px; font-weight: 800; }
+
+.form-head button {
+  padding: 4px 6px;
+  border: 0;
+  background: transparent;
+  color: var(--muted);
+  font-size: 11px;
+}
+
+.field { margin-bottom: 13px; }
+
+.field > label {
+  display: block;
+  margin: 0 0 6px 2px;
+  font-size: 10.5px;
+  font-weight: 700;
+  letter-spacing: .05em;
+  color: var(--muted);
+}
+
+.field-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+
+.seg {
+  display: flex;
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+}
+
+.seg button {
+  flex: 1;
+  padding: 8px 2px;
+  border: 0;
+  border-radius: 9px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 650;
+  white-space: nowrap;
+  transition: background .18s, color .18s;
+}
+
+.seg button[aria-pressed="true"] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.type-seg button[data-val="coffee"][aria-pressed="true"] { color: var(--coffee); }
+.type-seg button[data-val="tea"][aria-pressed="true"] { color: var(--tea); }
+.type-seg button[data-val="other"][aria-pressed="true"] { color: var(--other); }
+
+.sugar-seg button { font-size: 10.5px; }
+
+.input,
+.price-wrap {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+}
+
+.input {
+  width: 100%;
+  height: 42px;
+  padding: 0 12px;
+  color: var(--text);
+  font-size: 13px;
+}
+
+.input::placeholder { color: var(--faint); }
+
+.input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.price-wrap {
+  display: flex;
+  align-items: center;
+  height: 42px;
+  padding: 0 12px;
+}
+
+.price-wrap:focus-within {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.price-wrap span {
+  margin-right: 5px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.price-wrap input {
+  flex: 1;
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 13px;
+  outline: none;
+}
+
+.price-wrap input::placeholder { color: var(--faint); }
+
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 7px;
+}
+
+.chips button {
+  padding: 5px 9px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--card);
+  color: var(--muted);
+  font-size: 11px;
+  font-weight: 600;
+  transition: border-color .15s, color .15s;
+}
+
+.chips button[aria-pressed="true"] {
+  border-color: var(--accent);
+  color: var(--accent);
+  box-shadow: 0 2px 6px var(--accent-soft);
+}
+
+.moods { display: flex; gap: 7px; }
+
+.moods button {
+  flex: 1;
+  height: 40px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 11px;
+  background: var(--card);
+  font-size: 18px;
+  opacity: .62;
+  filter: grayscale(.25);
+  transition: transform .18s, opacity .18s, border-color .18s, background .18s;
+}
+
+.moods button[aria-pressed="true"] {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  opacity: 1;
+  filter: none;
+  transform: translateY(-1px);
+}
+
+.primary-btn {
+  width: 100%;
+  height: 48px;
+  margin-top: 4px;
+  border: 0;
+  border-radius: 15px;
+  background: var(--primary-grad);
+  color: var(--on-primary);
+  font-size: 14px;
+  font-weight: 800;
+  letter-spacing: .02em;
+  box-shadow: 0 8px 20px var(--accent-soft);
+  transition: transform .15s;
+}
+
+.primary-btn:active { transform: scale(.97); }
+
+/* ---------- 轻提示 ---------- */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(22px + var(--safe-bottom));
+  z-index: 120;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 88vw;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: var(--text);
+  color: var(--bg);
+  font-size: 12px;
+  font-weight: 600;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, .25);
+  opacity: 0;
+  transform: translate(-50%, 16px);
+  pointer-events: none;
+  transition: opacity .22s, transform .22s;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+  pointer-events: auto;
+}
+
+.toast button {
+  flex: 0 0 auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 800;
+  text-decoration: underline;
+}
+
+/* ---------- 桌面宽屏微调 ---------- */
+@media (min-width: 560px) {
+  .sheet {
+    bottom: 24px;
+    max-height: 86vh;
+    border-bottom: 1px solid var(--line);
+    border-radius: 26px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 24 24">
+          <path d="M5.2 9.4h10.6v6.1a4.9 4.9 0 0 1-4.9 4.9H10a4.9 4.9 0 0 1-4.9-4.9Z" fill="currentColor"/>
+          <path d="M15.8 10.9h1.7a2.8 2.8 0 0 1 0 5.6h-2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+          <path d="M8.3 6.4c-.6-1 .5-1.8 0-2.9M11.4 6.4c-.6-1 .5-1.8 0-2.9" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" opacity=".5"/>
+        </svg>
+      </div>
+      <div class="brand-text">
+        <h1>杯杯日记</h1>
+        <p>每一杯，都是生活的小确幸</p>
+      </div>
+    </div>
+    <button class="icon-btn" id="themeBtn" aria-label="切换主题"></button>
+  </header>
+
+  <main class="main">
+    <div class="month-bar">
+      <div class="month-label">
+        <h2 id="monthTitle">11月</h2>
+        <span id="yearLabel">2026</span>
+      </div>
+      <div class="month-tools">
+        <button class="nav-btn" id="prevBtn" aria-label="上个月">
+          <svg viewBox="0 0 24 24"><path d="M14.5 5.5 8 12l6.5 6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button class="nav-btn" id="nextBtn" aria-label="下个月">
+          <svg viewBox="0 0 24 24"><path d="M9.5 5.5 16 12l-6.5 6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        </button>
+        <button class="today-btn" id="todayBtn">今天</button>
+      </div>
+    </div>
+
+    <div class="tip" id="guideTip" hidden>
+      <span class="tip-emoji" aria-hidden="true">☕</span>
+      <p>日历里已经放了几条示例记录。轻点任意一天，就能编辑或再记一杯；左右滑动可以切换月份。</p>
+      <button type="button" id="guideClose">知道啦</button>
+    </div>
+
+    <section class="cal-card" id="calCard" aria-label="打卡日历">
+      <div class="weekdays" aria-hidden="true">
+        <span>一</span><span>二</span><span>三</span><span>四</span><span>五</span><span>六</span><span>日</span>
+      </div>
+      <div class="grid" id="calendarGrid"></div>
+      <div class="cal-foot">
+        <div class="legend" aria-label="饮品颜色图例">
+          <span><i class="dot coffee"></i>咖啡</span>
+          <span><i class="dot tea"></i>奶茶</span>
+          <span><i class="dot other"></i>其他</span>
+        </div>
+        <span class="cal-hint">轻点日期 · 可滑动</span>
+      </div>
+    </section>
+
+    <section class="panel" aria-label="月度统计">
+      <div class="panel-head">
+        <h2 id="statsTitle">11月小结</h2>
+        <span class="panel-sub" id="statsRange">11.01 – 11.30</span>
+      </div>
+      <div class="metrics">
+        <div class="metric">
+          <div class="metric-val" id="mCups">0<span>杯</span></div>
+          <div class="metric-label">杯数</div>
+        </div>
+        <div class="metric">
+          <div class="metric-val" id="mSpend">¥0</div>
+          <div class="metric-label">总花费</div>
+        </div>
+        <div class="metric">
+          <div class="metric-val" id="mAvg"><span class="dash">—</span></div>
+          <div class="metric-label">平均单价</div>
+        </div>
+        <div class="metric">
+          <div class="metric-val" id="mStreak">0<span>天</span></div>
+          <div class="metric-label">连续打卡</div>
+        </div>
+      </div>
+      <div class="fav">
+        <svg class="fav-cup" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M5.2 9.4h10.6v6.1a4.9 4.9 0 0 1-4.9 4.9H10a4.9 4.9 0 0 1-4.9-4.9Z" fill="currentColor"/>
+          <path d="M15.8 10.9h1.7a2.8 2.8 0 0 1 0 5.6h-2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>
+        </svg>
+        <div id="favText">还没有常客，第一杯在等你</div>
+      </div>
+      <div class="dist-head" id="distHead">
+        <h3>饮品分布</h3>
+        <span>按杯数</span>
+      </div>
+      <div class="dist-body" id="distBody">
+        <div class="donut" id="donutWrap"></div>
+        <ul class="dist-legend" id="distLegend"></ul>
+      </div>
+      <div class="stats-empty" id="statsEmpty" hidden>
+        这个月还没有饮品足迹。<br>点日历上的任意一天，记下第一杯吧 ☕
+      </div>
+    </section>
+
+    <section class="panel data-panel" aria-label="数据备份">
+      <div class="data-head">
+        <h2>数据备份</h2>
+        <p>记录只保存在这台设备，换手机前记得先导出一份。</p>
+      </div>
+      <div class="data-actions">
+        <button class="ghost-btn" id="exportBtn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v11m0 0-4-4m4 4 4-4M4 19h16"/></svg>
+          导出备份
+        </button>
+        <button class="ghost-btn" id="importBtn" type="button">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 14V3m0 0-4 4m4-4 4 4M4 19h16"/></svg>
+          导入备份
+        </button>
+      </div>
+    </section>
+
+    <p class="footnote">杯杯日记 · 所有记录只保存在这台设备</p>
+  </main>
+</div>
+
+<!-- 单日记录面板 -->
+<div class="backdrop" id="backdrop" hidden></div>
+<section class="sheet" id="sheet" role="dialog" aria-modal="true" aria-labelledby="sheetTitle" hidden>
+  <div class="grabber" aria-hidden="true"></div>
+  <header class="sheet-head">
+    <div>
+      <h2 id="sheetTitle">11月2日</h2>
+      <p id="sheetSub">周日 · 还没记录</p>
+    </div>
+    <button class="sheet-close" id="sheetClose" type="button" aria-label="关闭">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>
+    </button>
+  </header>
+  <div class="sheet-scroll" id="sheetScroll">
+    <div class="day-records" id="dayRecords"></div>
+    <button class="add-btn" id="addBtn" type="button">＋ 记一杯</button>
+
+    <form class="record-form" id="recordForm" hidden>
+      <div class="form-head">
+        <span id="formTitle">记一杯</span>
+        <button type="button" id="cancelForm">取消</button>
+      </div>
+
+      <div class="field">
+        <label>喝什么</label>
+        <div class="seg type-seg" id="typeSeg">
+          <button type="button" data-val="coffee" aria-pressed="true">☕ 咖啡</button>
+          <button type="button" data-val="tea" aria-pressed="false">🧋 奶茶</button>
+          <button type="button" data-val="other" aria-pressed="false">🍹 其他</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="nameInput">名字</label>
+        <input class="input" id="nameInput" type="text" maxlength="20" placeholder="例如：冰美式" autocomplete="off">
+        <div class="chips" id="nameChips"></div>
+      </div>
+
+      <div class="field-grid">
+        <div class="field">
+          <label>杯量</label>
+          <div class="seg" id="sizeSeg">
+            <button type="button" data-val="小" aria-pressed="false">小杯</button>
+            <button type="button" data-val="中" aria-pressed="true">中杯</button>
+            <button type="button" data-val="大" aria-pressed="false">大杯</button>
+          </div>
+        </div>
+        <div class="field">
+          <label>冰热</label>
+          <div class="seg" id="tempSeg">
+            <button type="button" data-val="冰" aria-pressed="true">冰</button>
+            <button type="button" data-val="热" aria-pressed="false">热</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="field">
+        <label>甜度</label>
+        <div class="seg sugar-seg" id="sugarSeg">
+          <button type="button" data-val="无糖" aria-pressed="false">无糖</button>
+          <button type="button" data-val="三分糖" aria-pressed="true">三分糖</button>
+          <button type="button" data-val="五分糖" aria-pressed="false">五分糖</button>
+          <button type="button" data-val="七分糖" aria-pressed="false">七分糖</button>
+          <button type="button" data-val="全糖" aria-pressed="false">全糖</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label for="priceInput">花了多少</label>
+        <div class="price-wrap">
+          <span>¥</span>
+          <input id="priceInput" type="number" inputmode="decimal" min="0" step="0.01" placeholder="选填，例如 18">
+        </div>
+      </div>
+
+      <div class="field">
+        <label>当时心情</label>
+        <div class="moods" id="moodRow"></div>
+      </div>
+
+      <div class="field">
+        <label for="noteInput">小小备注</label>
+        <input class="input" id="noteInput" type="text" maxlength="40" placeholder="给这杯留一句话（选填）">
+      </div>
+
+      <button class="primary-btn" id="saveBtn" type="submit">记下这杯</button>
+    </form>
+
+    <p class="sheet-foot-note">一杯一记，都是生活的甜度</p>
+  </div>
+</section>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<input type="file" id="importFile" accept=".json,application/json" hidden>
+<noscript><p style="padding:24px;text-align:center;font-size:14px">请开启浏览器 JavaScript，才能记录你的每一杯。</p></noscript>
+
+<script>
+/* ============================================================
+   杯杯日记 · 应用逻辑
+   模块：数据存取 / 日期工具 / 日历渲染 / 统计 / 记录面板 / 主题 / 备份
+   ============================================================ */
+(function () {
+  'use strict';
+
+  /* ---------- 常量 ---------- */
+  var STORAGE_KEY = 'bgbj.records.v1';
+  var THEME_KEY = 'bgbj.theme';
+  var GUIDE_KEY = 'bgbj.guide.v1';
+
+  var TYPES = {
+    coffee: { label: '咖啡', emoji: '☕', order: 0 },
+    tea: { label: '奶茶', emoji: '🧋', order: 1 },
+    other: { label: '其他', emoji: '🍹', order: 2 }
+  };
+
+  var NAMES = {
+    coffee: ['美式', '拿铁', '生椰拿铁', '卡布奇诺', '澳白', '摩卡'],
+    tea: ['珍珠奶茶', '芋泥波波', '椰乳茶', '水果茶', '抹茶拿铁'],
+    other: ['柠檬茶', '气泡水', '鲜榨果汁', '纯茶', '热可可']
+  };
+
+  var SIZES = ['小', '中', '大'];
+  var TEMPS = ['冰', '热'];
+  var SUGARS = ['无糖', '三分糖', '五分糖', '七分糖', '全糖'];
+  var MOODS = ['😌', '😋', '🤩', '🥱', '😴', '🥰'];
+  var WEEKDAYS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+
+  /* ---------- DOM ---------- */
+  var $ = function (sel) { return document.querySelector(sel); };
+  var monthTitle = $('#monthTitle');
+  var yearLabel = $('#yearLabel');
+  var calendarGrid = $('#calendarGrid');
+  var calCard = $('#calCard');
+  var statsTitle = $('#statsTitle');
+  var statsRange = $('#statsRange');
+  var mCups = $('#mCups');
+  var mSpend = $('#mSpend');
+  var mAvg = $('#mAvg');
+  var mStreak = $('#mStreak');
+  var favText = $('#favText');
+  var distHead = $('#distHead');
+  var distBody = $('#distBody');
+  var donutWrap = $('#donutWrap');
+  var distLegend = $('#distLegend');
+  var statsEmpty = $('#statsEmpty');
+  var themeBtn = $('#themeBtn');
+  var metaTheme = $('#metaTheme');
+  var guideTip = $('#guideTip');
+  var prevBtn = $('#prevBtn');
+  var nextBtn = $('#nextBtn');
+  var todayBtn = $('#todayBtn');
+  var sheet = $('#sheet');
+  var backdrop = $('#backdrop');
+  var sheetTitle = $('#sheetTitle');
+  var sheetSub = $('#sheetSub');
+  var dayRecords = $('#dayRecords');
+  var sheetScroll = $('#sheetScroll');
+  var addBtn = $('#addBtn');
+  var form = $('#recordForm');
+  var formTitle = $('#formTitle');
+  var nameInput = $('#nameInput');
+  var nameChips = $('#nameChips');
+  var priceInput = $('#priceInput');
+  var noteInput = $('#noteInput');
+  var moodRow = $('#moodRow');
+  var typeSeg = $('#typeSeg');
+  var sizeSeg = $('#sizeSeg');
+  var tempSeg = $('#tempSeg');
+  var sugarSeg = $('#sugarSeg');
+  var saveBtn = $('#saveBtn');
+  var toastEl = $('#toast');
+  var importFile = $('#importFile');
+
+  /* ---------- 状态 ---------- */
+  var state = {
+    records: [],
+    view: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
+    sheetDate: null,
+    editingId: null,
+    bounceDate: null
+  };
+
+  var toastTimer = null;
+  var swiped = false;
+
+  /* ---------- 通用工具 ---------- */
+  function pad(n) { return String(n).padStart(2, '0'); }
+
+  function ymd(date) {
+    return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate());
+  }
+
+  function fromYmd(str) {
+    var parts = String(str).split('-').map(Number);
+    return new Date(parts[0], parts[1] - 1, parts[2]);
+  }
+
+  function todayStr() { return ymd(new Date()); }
+
+  function monthKey(year, month) { return year + '-' + pad(month + 1); }
+
+  function uid() {
+    return 'r' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  }
+
+  function esc(value) {
+    return String(value).replace(/[&<>"']/g, function (ch) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch];
+    });
+  }
+
+  function fmtMoney(n) {
+    if (n === null || n === undefined || !isFinite(n)) return '0';
+    var rounded = Math.round(Number(n) * 100) / 100;
+    return rounded.toFixed(2).replace(/\.?0+$/, '');
+  }
+
+  function storageGet(key) {
+    try { return localStorage.getItem(key); } catch (e) { return null; }
+  }
+
+  function storageSet(key, value) {
+    try { localStorage.setItem(key, value); return true; } catch (e) { return false; }
+  }
+
+  /* ---------- 图标 ---------- */
+  function cupSVG(type) {
+    return '<svg class="cup ' + type + '" viewBox="0 0 24 24" aria-hidden="true">' +
+      '<path d="M5.4 9.4h10.5v6.1a4.9 4.9 0 0 1-4.9 4.9h-.7a4.9 4.9 0 0 1-4.9-4.9Z" fill="currentColor"/>' +
+      '<path d="M15.9 11h1.6a2.75 2.75 0 0 1 0 5.5h-2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/>' +
+      '<path d="M8.4 6.3c-.6-1 .5-1.8 0-2.8M11.4 6.3c-.6-1 .5-1.8 0-2.8" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" opacity=".5"/>' +
+      '</svg>';
+  }
+
+  function emptyCupSVG() {
+    return '<svg viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true">' +
+      '<path d="M14 24h27v16a9 9 0 0 1-9 9h-9a9 9 0 0 1-9-9V24Z"/>' +
+      '<path d="M41 28h5a7 7 0 0 1 0 14h-7"/>' +
+      '<path d="M22 14c-2-3 2-6 0-9M32 14c-2-3 2-6 0-9"/>' +
+      '</svg>';
+  }
+
+  var ICON_MOON = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.2 14.6A8.6 8.6 0 0 1 9.4 3.8a8.6 8.6 0 1 0 10.8 10.8Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>';
+  var ICON_SUN = '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 2.5v2.2M12 19.3v2.2M2.5 12h2.2M19.3 12h2.2M5.3 5.3l1.5 1.5M17.2 17.2l1.5 1.5M18.7 5.3l-1.5 1.5M6.8 17.2l-1.5 1.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>';
+
+  var ICON_EDIT = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17v3Z"/></svg>';
+  var ICON_TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9.5 7V4.8h5V7M6.5 7l.9 12.2h9.2L17.5 7M10 10.5v5.5M14 10.5v5.5"/></svg>';
+
+  /* ---------- 数据 ---------- */
+  function normalizeRecord(raw) {
+    if (!raw || typeof raw !== 'object') return null;
+
+    var date = String(raw.date || '');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+    var d = fromYmd(date);
+    if (isNaN(d.getTime()) || ymd(d) !== date) return null;
+
+    var type = TYPES[raw.type] ? raw.type : 'other';
+    var name = String(raw.name || '').trim().slice(0, 20) || TYPES[type].label;
+    var size = SIZES.indexOf(raw.size) > -1 ? raw.size : '中';
+    var temp = TEMPS.indexOf(raw.temp) > -1 ? raw.temp : '冰';
+    var sugar = SUGARS.indexOf(raw.sugar) > -1 ? raw.sugar : '三分糖';
+    var mood = (typeof raw.mood === 'string' && raw.mood.length > 0 && raw.mood.length <= 4) ? raw.mood : '😌';
+
+    var price = null;
+    if (raw.price !== null && raw.price !== undefined && raw.price !== '') {
+      var n = Number(raw.price);
+      if (isFinite(n) && n >= 0) price = Math.min(Math.round(n * 100) / 100, 9999);
+    }
+
+    return {
+      id: (typeof raw.id === 'string' && raw.id) ? raw.id : uid(),
+      date: date,
+      type: type,
+      name: name,
+      size: size,
+      temp: temp,
+      sugar: sugar,
+      price: price,
+      mood: mood,
+      note: String(raw.note || '').slice(0, 40),
+      createdAt: Number(raw.createdAt) || Date.now(),
+      sample: raw.sample === true
+    };
+  }
+
+  function loadRecords() {
+    var raw = storageGet(STORAGE_KEY);
+    if (raw === null) {
+      var seeded = makeSeedRecords();
+      storageSet(STORAGE_KEY, JSON.stringify(seeded));
+      return seeded;
+    }
+    try {
+      var parsed = JSON.parse(raw);
+      var arr = Array.isArray(parsed) ? parsed : (parsed && Array.isArray(parsed.records) ? parsed.records : []);
+      return arr.map(normalizeRecord).filter(Boolean);
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function saveRecords() {
+    var ok = storageSet(STORAGE_KEY, JSON.stringify(state.records));
+    if (!ok) showToast('保存失败了，可能是存储空间不足');
+    return ok;
+  }
+
+  function makeSeedRecords() {
+    var now = new Date();
+    var y = now.getFullYear();
+    var m = now.getMonth();
+    var today = now.getDate();
+    var list = [];
+    var seq = 0;
+
+    function add(dateObj, type, name, size, temp, sugar, price, mood, note) {
+      list.push({
+        id: uid(),
+        date: ymd(dateObj),
+        type: type,
+        name: name,
+        size: size,
+        temp: temp,
+        sugar: sugar,
+        price: price,
+        mood: mood,
+        note: note,
+        createdAt: Date.now() - (200 - seq) * 1000,
+        sample: true
+      });
+      seq++;
+    }
+
+    /* 上个月的几条足迹，切回上个月也能看到内容 */
+    var prevSamples = [
+      ['拿铁', '中', '热', '三分糖', 22, '😌', '阴天里的一点暖'],
+      ['珍珠奶茶', '大', '冰', '五分糖', 18, '😋', ''],
+      ['美式', '中', '冰', '无糖', 15, '🥱', '赶稿必备'],
+      ['芋泥波波', '中', '冰', '七分糖', 20, '🥰', '芋泥给得很足'],
+      ['柠檬茶', '中', '冰', '三分糖', 12, '😋', ''],
+      ['生椰拿铁', '大', '冰', '三分糖', 19, '🤩', '椰香刚刚好'],
+      ['热可可', '小', '热', '全糖', 16, '😴', ''],
+      ['水果茶', '大', '冰', '五分糖', 18, '😌', '下午的续命水'],
+      ['摩卡', '中', '热', '七分糖', 24, '😋', '奶油有点多']
+    ];
+
+    prevSamples.forEach(function (s, i) {
+      var date = new Date(y, m - 1, 3 + i * 3);
+      add(date, i % 3 === 0 ? 'coffee' : (i % 3 === 1 ? 'tea' : 'other'), s[0], s[1], s[2], s[3], s[4], s[5], s[6]);
+    });
+
+    /* 本月：1 号以及今天，留几条可以玩的示例 */
+    add(new Date(y, m, 1), 'coffee', '美式', '中', '冰', '无糖', 15, '🥱', '新的一月，先醒醒神');
+    add(new Date(y, m, 1), 'tea', '珍珠奶茶', '大', '冰', '五分糖', 18, '😋', '下午的小奖励');
+
+    if (today >= 2) {
+      add(new Date(y, m, today), 'coffee', '美式', '中', '冰', '无糖', 15, '😌', '开会续命');
+      add(new Date(y, m, today), 'coffee', '生椰拿铁', '大', '冰', '三分糖', 19, '🤩', '椰香刚刚好');
+      add(new Date(y, m, today), 'other', '柠檬茶', '中', '冰', '三分糖', 12, '😋', '解腻神器');
+    }
+
+    return list;
+  }
+
+  /* ---------- 统计 ---------- */
+  function recordsOfMonth(year, month) {
+    var key = monthKey(year, month);
+    return state.records.filter(function (r) { return r.date.indexOf(key) === 0; });
+  }
+
+  function calcStreak() {
+    var dates = {};
+    state.records.forEach(function (r) { dates[r.date] = true; });
+    var cursor = new Date();
+    var streak = 0;
+
+    if (!dates[ymd(cursor)]) {
+      cursor.setDate(cursor.getDate() - 1);
+      if (!dates[ymd(cursor)]) return 0;
+    }
+    while (dates[ymd(cursor)]) {
+      streak++;
+      cursor.setDate(cursor.getDate() - 1);
+    }
+    return streak;
+  }
+
+  /* ---------- 渲染：日历 ---------- */
+  function renderCalendar(dir) {
+    var y = state.view.getFullYear();
+    var m = state.view.getMonth();
+    var first = new Date(y, m, 1);
+    var offset = (first.getDay() + 6) % 7; /* 周一为一周的开始 */
+    var daysInMonth = new Date(y, m + 1, 0).getDate();
+    var cells = Math.ceil((offset + daysInMonth) / 7) * 7;
+    var today = todayStr();
+
+    var byDate = {};
+    state.records.forEach(function (r) {
+      if (!byDate[r.date]) byDate[r.date] = [];
+      byDate[r.date].push(r);
+    });
+
+    monthTitle.textContent = (m + 1) + '月';
+    yearLabel.textContent = String(y);
+
+    var html = '';
+    for (var i = 0; i < cells; i++) {
+      var d = new Date(y, m, 1 - offset + i);
+      var ds = ymd(d);
+      var inMonth = d.getMonth() === m;
+      var recs = inMonth ? (byDate[ds] || []) : [];
+      var count = recs.length;
+      var cls = 'day';
+      var dominant = '';
+      var cupHtml = '';
+      var label;
+
+      if (!inMonth) cls += ' other';
+
+      if (count) {
+        cls += ' has';
+        var typeCount = { coffee: 0, tea: 0, other: 0 };
+        recs.forEach(function (r) { typeCount[r.type]++; });
+        dominant = Object.keys(typeCount).sort(function (a, b) {
+          return (typeCount[b] - typeCount[a]) || (TYPES[a].order - TYPES[b].order);
+        })[0];
+        cupHtml = '<div class="cups' + (state.bounceDate === ds ? ' bounce' : '') + '">' +
+          recs.slice(0, 3).map(function (r) { return cupSVG(r.type); }).join('') +
+          '</div>';
+      }
+
+      if (ds === today) cls += ' today';
+      if (ds === state.sheetDate) cls += ' selected';
+
+      var badge = count > 3 ? '<span class="count">×' + count + '</span>' : '';
+
+      if (inMonth) {
+        label = (m + 1) + '月' + d.getDate() + '日' + (ds === today ? '，今天' : '') +
+          (count ? '，' + count + '杯：' + recs.map(function (r) { return r.name; }).join('、') : '，还没有记录');
+      } else {
+        label = '';
+      }
+
+      html += '<button type="button" class="' + cls + '" data-date="' + ds + '"' +
+        (dominant ? ' data-dominant="' + dominant + '"' : '') +
+        (inMonth ? ' aria-label="' + esc(label) + '"' : ' disabled aria-hidden="true"') +
+        '>' +
+        '<span class="num">' + d.getDate() + '</span>' +
+        cupHtml +
+        badge +
+        '</button>';
+    }
+
+    calendarGrid.innerHTML = html;
+    calendarGrid.classList.remove('enter-next', 'enter-prev');
+    if (dir) {
+      void calendarGrid.offsetWidth;
+      calendarGrid.classList.add(dir > 0 ? 'enter-next' : 'enter-prev');
+    }
+    if (state.bounceDate) {
+      setTimeout(function () { state.bounceDate = null; }, 1300);
+    }
+  }
+
+  /* ---------- 渲染：统计 ---------- */
+  function renderStats() {
+    var y = state.view.getFullYear();
+    var m = state.view.getMonth();
+    var recs = recordsOfMonth(y, m);
+    var daysInMonth = new Date(y, m + 1, 0).getDate();
+    var total = recs.length;
+
+    var priced = recs.filter(function (r) { return typeof r.price === 'number' && r.price > 0; });
+    var spend = priced.reduce(function (sum, r) { return sum + r.price; }, 0);
+    var avg = priced.length ? spend / priced.length : null;
+
+    var nameMap = {};
+    recs.forEach(function (r) {
+      if (!nameMap[r.name]) nameMap[r.name] = { name: r.name, count: 0, last: 0 };
+      nameMap[r.name].count++;
+      nameMap[r.name].last = Math.max(nameMap[r.name].last, r.createdAt || 0);
+    });
+    var favourite = null;
+    Object.keys(nameMap).forEach(function (key) {
+      var item = nameMap[key];
+      if (!favourite || item.count > favourite.count ||
+          (item.count === favourite.count && item.last > favourite.last)) {
+        favourite = item;
+      }
+    });
+
+    statsTitle.textContent = (m + 1) + '月小结';
+    statsRange.textContent = pad(m + 1) + '.01 – ' + pad(m + 1) + '.' + pad(daysInMonth);
+
+    mCups.innerHTML = total + '<span>杯</span>';
+    mSpend.textContent = '¥' + fmtMoney(spend);
+    mAvg.innerHTML = avg === null
+      ? '<span class="dash">—</span>'
+      : '¥' + fmtMoney(Math.round(avg * 10) / 10);
+    mStreak.innerHTML = calcStreak() + '<span>天</span>';
+
+    if (favourite) {
+      favText.innerHTML = '最常喝 <b>' + esc(favourite.name) + '</b> <span>· ' + favourite.count + ' 杯</span>';
+    } else {
+      favText.textContent = '还没有常客，第一杯在等你';
+    }
+
+    var counts = { coffee: 0, tea: 0, other: 0 };
+    recs.forEach(function (r) { counts[r.type]++; });
+
+    if (!total) {
+      distHead.hidden = true;
+      distBody.hidden = true;
+      statsEmpty.hidden = false;
+      return;
+    }
+
+    distHead.hidden = false;
+    distBody.hidden = false;
+    statsEmpty.hidden = true;
+
+    /* 环形图：用 pathLength=100 让每段更容易计算 */
+    var offsetPct = 0;
+    var segs = Object.keys(TYPES).filter(function (k) { return counts[k] > 0; }).map(function (k) {
+      var pct = counts[k] / total * 100;
+      var seg = '<circle class="donut-seg ' + k + '" cx="60" cy="60" r="46" pathLength="100"' +
+        ' stroke-dasharray="' + pct + ' ' + (100 - pct) + '"' +
+        ' stroke-dashoffset="' + (-offsetPct) + '"></circle>';
+      offsetPct += pct;
+      return seg;
+    }).join('');
+
+    donutWrap.innerHTML =
+      '<svg class="donut-svg" viewBox="0 0 120 120" aria-hidden="true">' +
+        '<circle class="donut-track" cx="60" cy="60" r="46"></circle>' + segs +
+      '</svg>' +
+      '<div class="donut-center"><b>' + total + '</b><span>杯</span></div>';
+
+    distLegend.innerHTML = Object.keys(TYPES).map(function (k) {
+      var pct = Math.round(counts[k] / total * 100);
+      return '<li><span class="dot ' + k + '"></span><span class="name">' + TYPES[k].label + '</span>' +
+        '<b>' + counts[k] + '</b><span class="pct">' + pct + '%</span></li>';
+    }).join('');
+  }
+
+  function renderAll(dir, bounceDate) {
+    state.bounceDate = bounceDate || null;
+    renderCalendar(dir || 0);
+    renderStats();
+  }
+
+  /* ---------- 记录面板 ---------- */
+  function renderDayRecords() {
+    if (!state.sheetDate) return;
+
+    var recs = state.records
+      .filter(function (r) { return r.date === state.sheetDate; })
+      .sort(function (a, b) { return (a.createdAt || 0) - (b.createdAt || 0); });
+
+    var d = fromYmd(state.sheetDate);
+    sheetTitle.textContent = (d.getMonth() + 1) + '月' + d.getDate() + '日';
+
+    var priced = recs.filter(function (r) { return typeof r.price === 'number' && r.price > 0; });
+    var spend = priced.reduce(function (sum, r) { return sum + r.price; }, 0);
+    sheetSub.textContent = WEEKDAYS[d.getDay()] + ' · ' +
+      (recs.length
+        ? '已记 ' + recs.length + ' 杯' + (spend > 0 ? ' · ¥' + fmtMoney(spend) : '')
+        : '还没记录');
+
+    if (recs.length) {
+      dayRecords.innerHTML = recs.map(function (r) {
+        var price = (typeof r.price === 'number' && r.price > 0) ? '<span class="rec-price">¥' + fmtMoney(r.price) + '</span>' : '';
+        var note = r.note ? '<div class="rec-note">“' + esc(r.note) + '”</div>' : '';
+        return '<div class="rec-item">' +
+          '<div class="rec-icon ' + r.type + '">' + cupSVG(r.type) + '</div>' +
+          '<div class="rec-main">' +
+            '<div class="rec-top"><span class="rec-name">' + esc(r.name) + '</span>' +
+              (r.sample ? '<span class="sample-tag">示例</span>' : '') + price + '</div>' +
+            '<div class="rec-spec">' + r.size + '杯 · ' + r.temp + ' · ' + r.sugar +
+              ' <span class="mood">' + r.mood + '</span></div>' +
+            note +
+          '</div>' +
+          '<div class="rec-actions">' +
+            '<button type="button" data-action="edit" data-id="' + esc(r.id) + '" aria-label="编辑这杯">' + ICON_EDIT + '</button>' +
+            '<button type="button" data-action="delete" data-id="' + esc(r.id) + '" aria-label="删除这杯">' + ICON_TRASH + '</button>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    } else {
+      dayRecords.innerHTML = '<div class="empty-day">' + emptyCupSVG() +
+        '<p>这天还没有饮品记录</p><span>奶茶、咖啡，还是别的什么？</span></div>';
+    }
+
+    addBtn.hidden = state.editingId !== null;
+    addBtn.textContent = recs.length ? '＋ 再记一杯' : '＋ 记一杯';
+  }
+
+  function openSheet(dateStr) {
+    state.sheetDate = dateStr;
+    state.editingId = null;
+    form.hidden = true;
+    resetForm();
+    renderDayRecords();
+
+    sheet.hidden = false;
+    backdrop.hidden = false;
+    document.body.style.overflow = 'hidden';
+    sheetScroll.scrollTop = 0;
+
+    requestAnimationFrame(function () {
+      sheet.classList.add('open');
+      backdrop.classList.add('open');
+    });
+
+    Array.prototype.forEach.call(calendarGrid.querySelectorAll('.day.selected'), function (el) {
+      el.classList.remove('selected');
+    });
+    var selected = calendarGrid.querySelector('.day[data-date="' + dateStr + '"]');
+    if (selected) selected.classList.add('selected');
+  }
+
+  function closeSheet() {
+    if (!state.sheetDate) return;
+
+    var dateStr = state.sheetDate;
+    state.sheetDate = null;
+    state.editingId = null;
+
+    sheet.classList.remove('open');
+    backdrop.classList.remove('open');
+    document.body.style.overflow = '';
+
+    var selected = calendarGrid.querySelector('.day[data-date="' + dateStr + '"]');
+    if (selected) selected.classList.remove('selected');
+
+    setTimeout(function () {
+      if (!sheet.classList.contains('open')) {
+        sheet.hidden = true;
+        backdrop.hidden = true;
+      }
+    }, 340);
+  }
+
+  /* ---------- 表单 ---------- */
+  function buildMoods() {
+    moodRow.innerHTML = MOODS.map(function (m, i) {
+      return '<button type="button" data-mood="' + m + '" aria-pressed="' + (i === 0 ? 'true' : 'false') + '" aria-label="心情 ' + m + '">' + m + '</button>';
+    }).join('');
+  }
+
+  function setSeg(seg, value) {
+    Array.prototype.forEach.call(seg.children, function (btn) {
+      btn.setAttribute('aria-pressed', btn.dataset.val === value ? 'true' : 'false');
+    });
+  }
+
+  function getSeg(seg) {
+    var active = seg.querySelector('[aria-pressed="true"]');
+    return active ? active.dataset.val : null;
+  }
+
+  function setMood(value) {
+    Array.prototype.forEach.call(moodRow.children, function (btn) {
+      btn.setAttribute('aria-pressed', btn.dataset.mood === value ? 'true' : 'false');
+    });
+  }
+
+  function getMood() {
+    var active = moodRow.querySelector('[aria-pressed="true"]');
+    return active ? active.dataset.mood : '😌';
+  }
+
+  function buildChips(type) {
+    nameChips.innerHTML = NAMES[type].map(function (name) {
+      return '<button type="button" data-name="' + esc(name) + '" aria-pressed="false">' + esc(name) + '</button>';
+    }).join('');
+    syncChips();
+  }
+
+  function syncChips() {
+    var current = nameInput.value.trim();
+    Array.prototype.forEach.call(nameChips.children, function (btn) {
+      btn.setAttribute('aria-pressed', btn.dataset.name === current ? 'true' : 'false');
+    });
+  }
+
+  function selectType(type, autoName) {
+    setSeg(typeSeg, type);
+    buildChips(type);
+    if (autoName) {
+      nameInput.value = NAMES[type][0];
+      syncChips();
+    }
+  }
+
+  function resetForm() {
+    setSeg(typeSeg, 'coffee');
+    selectType('coffee', true);
+    setSeg(sizeSeg, '中');
+    setSeg(tempSeg, '冰');
+    setSeg(sugarSeg, '三分糖');
+    setMood('😌');
+    priceInput.value = '';
+    noteInput.value = '';
+    nameInput.value = NAMES.coffee[0];
+    syncChips();
+    formTitle.textContent = '记一杯';
+    saveBtn.textContent = '记下这杯';
+  }
+
+  function startAdd() {
+    state.editingId = null;
+    resetForm();
+    form.hidden = false;
+    addBtn.hidden = true;
+    setTimeout(function () {
+      form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 60);
+  }
+
+  function startEdit(id) {
+    var record = state.records.find(function (r) { return r.id === id; });
+    if (!record) return;
+
+    state.editingId = id;
+    form.hidden = false;
+    addBtn.hidden = true;
+
+    selectType(record.type, false);
+    nameInput.value = record.name;
+    syncChips();
+    setSeg(sizeSeg, record.size);
+    setSeg(tempSeg, record.temp);
+    setSeg(sugarSeg, record.sugar);
+    setMood(record.mood);
+    priceInput.value = (typeof record.price === 'number') ? String(record.price) : '';
+    noteInput.value = record.note || '';
+
+    formTitle.textContent = '编辑这一杯';
+    saveBtn.textContent = '保存修改';
+
+    setTimeout(function () {
+      form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 60);
+  }
+
+  function cancelForm() {
+    state.editingId = null;
+    form.hidden = true;
+    addBtn.hidden = false;
+    resetForm();
+  }
+
+  function submitForm(event) {
+    event.preventDefault();
+    if (!state.sheetDate) return;
+
+    var type = getSeg(typeSeg) || 'coffee';
+    var name = nameInput.value.trim();
+    if (!name) {
+      showToast('先给这杯起个名字吧');
+      nameInput.focus();
+      return;
+    }
+
+    var price = null;
+    var rawPrice = priceInput.value.trim();
+    if (rawPrice) {
+      var n = Number(rawPrice);
+      if (!isFinite(n) || n < 0) {
+        showToast('价格填个数字就好');
+        priceInput.focus();
+        return;
+      }
+      price = Math.min(Math.round(n * 100) / 100, 9999);
+    }
+
+    var payload = {
+      date: state.sheetDate,
+      type: type,
+      name: name.slice(0, 20),
+      size: getSeg(sizeSeg) || '中',
+      temp: getSeg(tempSeg) || '冰',
+      sugar: getSeg(sugarSeg) || '三分糖',
+      price: price,
+      mood: getMood(),
+      note: noteInput.value.trim().slice(0, 40)
+    };
+
+    var message;
+    if (state.editingId) {
+      var target = state.records.find(function (r) { return r.id === state.editingId; });
+      if (target) {
+        Object.assign(target, payload, { sample: false, createdAt: target.createdAt || Date.now() });
+        message = '这杯已经更新好啦';
+      }
+    } else {
+      state.records.push(Object.assign({
+        id: uid(),
+        createdAt: Date.now(),
+        sample: false
+      }, payload));
+      message = '记下啦：' + payload.temp + payload.name;
+    }
+
+    var savedDate = state.sheetDate;
+    state.editingId = null;
+    saveRecords();
+    renderAll(0, savedDate);
+    closeSheet();
+    showToast(message, null, null);
+    if (navigator.vibrate) { try { navigator.vibrate(8); } catch (e) {} }
+  }
+
+  function deleteRecord(id) {
+    var index = state.records.findIndex(function (r) { return r.id === id; });
+    if (index < -1) return;
+    if (state.records[index] === undefined) return;
+
+    var removed = state.records[index];
+    state.records.splice(index, 1);
+
+    if (state.editingId === id) cancelForm();
+
+    saveRecords();
+    renderAll(0);
+    renderDayRecords();
+
+    showToast('删掉了这杯' + removed.name, '撤销', function () {
+      state.records.splice(Math.min(index, state.records.length), 0, removed);
+      saveRecords();
+      renderAll(0);
+      if (state.sheetDate) renderDayRecords();
+      showToast('已经放回去啦');
+    });
+  }
+
+  /* ---------- 轻提示 ---------- */
+  function showToast(message, actionLabel, onAction) {
+    clearTimeout(toastTimer);
+    toastEl.innerHTML = '';
+
+    var text = document.createElement('span');
+    text.textContent = message;
+    toastEl.appendChild(text);
+
+    if (actionLabel && typeof onAction === 'function') {
+      var action = document.createElement('button');
+      action.type = 'button';
+      action.textContent = actionLabel;
+      action.addEventListener('click', function () {
+        hideToast();
+        onAction();
+      });
+      toastEl.appendChild(action);
+    }
+
+    toastEl.classList.add('show');
+    toastTimer = setTimeout(hideToast, actionLabel ? 5200 : 2400);
+  }
+
+  function hideToast() {
+    toastEl.classList.remove('show');
+    clearTimeout(toastTimer);
+  }
+
+  /* ---------- 主题 ---------- */
+  function currentTheme() {
+    return document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light';
+  }
+
+  function applyTheme(theme, persist) {
+    document.documentElement.dataset.theme = theme;
+    themeBtn.innerHTML = theme === 'dark' ? ICON_SUN : ICON_MOON;
+    themeBtn.setAttribute('aria-label', theme === 'dark' ? '切换到浅色主题' : '切换到深色主题');
+    metaTheme.setAttribute('content', theme === 'dark' ? '#151110' : '#FFF8F1');
+    if (persist) storageSet(THEME_KEY, theme);
+  }
+
+  /* ---------- 备份 ---------- */
+  function exportBackup() {
+    var payload = {
+      app: '杯杯日记',
+      version: 1,
+      exportedAt: new Date().toISOString(),
+      count: state.records.length,
+      records: state.records
+    };
+    var blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement('a');
+    link.href = url;
+    link.download = '杯杯日记-' + todayStr() + '.json';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 800);
+    showToast('已导出 ' + state.records.length + ' 条记录');
+  }
+
+  function handleImport(file) {
+    if (!file) return;
+
+    var reader = new FileReader();
+    reader.onload = function () {
+      var data;
+      try {
+        data = JSON.parse(String(reader.result || ''));
+      } catch (e) {
+        showToast('这个文件读不出来，换一个备份试试');
+        importFile.value = '';
+        return;
+      }
+
+      var arr = Array.isArray(data) ? data : (data && Array.isArray(data.records) ? data.records : null);
+      if (!arr) {
+        showToast('这个文件看起来不是杯杯日记的备份');
+        importFile.value = '';
+        return;
+      }
+
+      var normalized = arr.map(normalizeRecord).filter(Boolean);
+      if (!normalized.length) {
+        showToast('备份里没有可导入的记录');
+        importFile.value = '';
+        return;
+      }
+
+      var ids = {};
+      var unique = [];
+      normalized.forEach(function (r) {
+        if (!ids[r.id]) { ids[r.id] = true; unique.push(r); }
+      });
+
+      var ok = window.confirm('导入会替换当前的 ' + state.records.length + ' 条记录，确定吗？');
+      if (!ok) {
+        importFile.value = '';
+        return;
+      }
+
+      state.records = unique;
+      saveRecords();
+      if (state.sheetDate) closeSheet();
+      state.view = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+      renderAll(0);
+      showToast('已导入 ' + unique.length + ' 条记录');
+      importFile.value = '';
+    };
+
+    reader.onerror = function () {
+      showToast('文件读取失败了，再试一次吧');
+      importFile.value = '';
+    };
+
+    reader.readAsText(file);
+  }
+
+  /* ---------- 月份切换 ---------- */
+  function shiftMonth(delta) {
+    state.view = new Date(state.view.getFullYear(), state.view.getMonth() + delta, 1);
+    renderAll(delta);
+  }
+
+  function goToday() {
+    var now = new Date();
+    var current = state.view.getFullYear() * 12 + state.view.getMonth();
+    var target = now.getFullYear() * 12 + now.getMonth();
+    if (current === target) {
+      showToast('正在看这个月呀');
+      return;
+    }
+    state.view = new Date(now.getFullYear(), now.getMonth(), 1);
+    renderAll(target > current ? 1 : -1);
+  }
+
+  /* ---------- 事件绑定 ---------- */
+  function bindEvents() {
+    prevBtn.addEventListener('click', function () { shiftMonth(-1); });
+    nextBtn.addEventListener('click', function () { shiftMonth(1); });
+    todayBtn.addEventListener('click', goToday);
+
+    calendarGrid.addEventListener('click', function (event) {
+      if (swiped) return;
+      var cell = event.target.closest('.day');
+      if (!cell || cell.disabled) return;
+      openSheet(cell.dataset.date);
+    });
+
+    /* 日历左右滑动切换月份 */
+    var touchX = 0;
+    var touchY = 0;
+    var tracking = false;
+
+    calCard.addEventListener('touchstart', function (event) {
+      if (event.touches.length !== 1) return;
+      touchX = event.touches[0].clientX;
+      touchY = event.touches[0].clientY;
+      tracking = true;
+    }, { passive: true });
+
+    calCard.addEventListener('touchend', function (event) {
+      if (!tracking) return;
+      tracking = false;
+      var dx = event.changedTouches[0].clientX - touchX;
+      var dy = event.changedTouches[0].clientY - touchY;
+      if (Math.abs(dx) > 52 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+        swiped = true;
+        setTimeout(function () { swiped = false; }, 350);
+        shiftMonth(dx < 0 ? 1 : -1);
+      }
+    }, { passive: true });
+
+    themeBtn.addEventListener('click', function () {
+      applyTheme(currentTheme() === 'dark' ? 'light' : 'dark', true);
+    });
+
+    guideTip.querySelector('#guideClose').addEventListener('click', function () {
+      guideTip.classList.add('hide');
+      storageSet(GUIDE_KEY, '1');
+      setTimeout(function () { guideTip.hidden = true; }, 260);
+    });
+
+    $('#exportBtn').addEventListener('click', exportBackup);
+    $('#importBtn').addEventListener('click', function () { importFile.click(); });
+    importFile.addEventListener('change', function () {
+      handleImport(importFile.files && importFile.files[0]);
+    });
+
+    $('#sheetClose').addEventListener('click', closeSheet);
+    backdrop.addEventListener('click', closeSheet);
+    document.addEventListener('keydown', function (event) {
+      if (event.key === 'Escape' && state.sheetDate) closeSheet();
+    });
+
+    addBtn.addEventListener('click', startAdd);
+    $('#cancelForm').addEventListener('click', cancelForm);
+    form.addEventListener('submit', submitForm);
+
+    /* 类型切换 */
+    typeSeg.addEventListener('click', function (event) {
+      var btn = event.target.closest('button[data-val]');
+      if (!btn) return;
+      var nextType = btn.dataset.val;
+      var allNames = Object.keys(NAMES).reduce(function (all, key) { return all.concat(NAMES[key]); }, []);
+      var currentName = nameInput.value.trim();
+      var autoName = !currentName || allNames.indexOf(currentName) > -1;
+      selectType(nextType, autoName);
+    });
+
+    /* 其他分段控件 */
+    [sizeSeg, tempSeg, sugarSeg].forEach(function (seg) {
+      seg.addEventListener('click', function (event) {
+        var btn = event.target.closest('button[data-val]');
+        if (!btn) return;
+        setSeg(seg, btn.dataset.val);
+      });
+    });
+
+    /* 名字快捷选项 */
+    nameChips.addEventListener('click', function (event) {
+      var btn = event.target.closest('button[data-name]');
+      if (!btn) return;
+      nameInput.value = btn.dataset.name;
+      syncChips();
+    });
+    nameInput.addEventListener('input', syncChips);
+
+    /* 心情 */
+    moodRow.addEventListener('click', function (event) {
+      var btn = event.target.closest('button[data-mood]');
+      if (!btn) return;
+      setMood(btn.dataset.mood);
+    });
+
+    /* 单日记录：编辑 / 删除 */
+    dayRecords.addEventListener('click', function (event) {
+      var btn = event.target.closest('button[data-action]');
+      if (!btn) return;
+      if (btn.dataset.action === 'edit') startEdit(btn.dataset.id);
+      if (btn.dataset.action === 'delete') deleteRecord(btn.dataset.id);
+    });
+
+    /* 跟随系统主题（尚未手动切换过时） */
+    if (window.matchMedia) {
+      var mq = window.matchMedia('(prefers-color-scheme: dark)');
+      var onChange = function () {
+        if (!storageGet(THEME_KEY)) applyTheme(mq.matches ? 'dark' : 'light', false);
+      };
+      if (mq.addEventListener) mq.addEventListener('change', onChange);
+      else if (mq.addListener) mq.addListener(onChange);
+    }
+  }
+
+  /* ---------- 离线缓存 ---------- */
+  function registerServiceWorker() {
+    if (!('serviceWorker' in navigator)) return;
+    if (!/^https?:$/.test(location.protocol)) return;
+    navigator.serviceWorker.register('sw.js').catch(function () {});
+  }
+
+  /* ---------- 初始化 ---------- */
+  function init() {
+    applyTheme(currentTheme(), false);
+
+    var guideDismissed = storageGet(GUIDE_KEY) === '1';
+    if (!guideDismissed) guideTip.hidden = false;
+
+    state.records = loadRecords();
+    state.view = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+
+    buildMoods();
+    resetForm();
+    bindEvents();
+    renderAll(0);
+    registerServiceWorker();
+  }
+
+  init();
+})();
+</script>
+</body>
+</html>
