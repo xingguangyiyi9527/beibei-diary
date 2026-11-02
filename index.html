@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>杯杯日记 · 咖啡奶茶打卡日历</title>
-<meta name="description" content="记录每天喝的咖啡、奶茶，看看这个月的杯数、花费与心情。数据只保存在本机。">
+<title>杯杯日记 · 咖啡奶茶茶饮打卡日历</title>
+<meta name="description" content="记录每天喝的咖啡、奶茶与茶饮，估算热量，看看这个月的杯数、花费与心情。数据只保存在本机。">
 <meta name="theme-color" content="#FFF8F1" id="metaTheme">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -42,9 +42,11 @@
 
   --coffee: #C6783C;
   --tea: #D5769B;
+  --chasui: #83A855;
   --other: #63A99A;
   --coffee-tint: rgba(198, 120, 60, .12);
   --tea-tint: rgba(213, 118, 155, .12);
+  --chasui-tint: rgba(131, 168, 85, .13);
   --other-tint: rgba(99, 169, 154, .12);
 
   --accent: #B05E2A;
@@ -73,9 +75,11 @@
 
   --coffee: #E7A16A;
   --tea: #EE99B7;
+  --chasui: #B5D68A;
   --other: #8ACBBA;
   --coffee-tint: rgba(231, 161, 106, .15);
   --tea-tint: rgba(238, 153, 183, .15);
+  --chasui-tint: rgba(181, 214, 138, .15);
   --other-tint: rgba(138, 203, 186, .15);
 
   --accent: #ECA96E;
@@ -402,6 +406,7 @@ button { cursor: pointer; }
 
 .day.has[data-dominant="coffee"] { background: var(--coffee-tint); }
 .day.has[data-dominant="tea"] { background: var(--tea-tint); }
+.day.has[data-dominant="chasui"] { background: var(--chasui-tint); }
 .day.has[data-dominant="other"] { background: var(--other-tint); }
 
 .day.today {
@@ -431,6 +436,7 @@ button { cursor: pointer; }
 .cups .cup + .cup { margin-left: -4px; }
 .cup.coffee { color: var(--coffee); }
 .cup.tea { color: var(--tea); }
+.cup.chasui { color: var(--chasui); }
 .cup.other { color: var(--other); }
 
 .cups.bounce { animation: bump .62s cubic-bezier(.34, 1.56, .64, 1); }
@@ -488,13 +494,43 @@ button { cursor: pointer; }
 
 .dot.coffee { background: var(--coffee); }
 .dot.tea { background: var(--tea); }
+.dot.chasui { background: var(--chasui); }
 .dot.other { background: var(--other); }
 
-.cal-hint {
+.kcal-toggle {
+  flex: 0 0 auto;
+  height: 26px;
+  padding: 0 11px;
+  border: 1px solid var(--line);
+  border-radius: 13px;
+  background: var(--card);
+  color: var(--muted);
   font-size: 9.5px;
-  color: var(--faint);
+  font-weight: 700;
   white-space: nowrap;
+  transition: background .18s, color .18s, border-color .18s;
 }
+
+.kcal-toggle[aria-pressed="true"] {
+  border-color: transparent;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.kcal-toggle:active { transform: scale(.95); }
+
+/* 日历格子的当日热量合计（开启后显示，杯数保持原位） */
+.day-kcal {
+  margin-top: 1px;
+  font-size: 8px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--faint);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -.02em;
+}
+
+.grid.show-kcal .day { height: 62px; }
 
 /* ---------- 统计面板 ---------- */
 .panel {
@@ -578,6 +614,83 @@ button { cursor: pointer; }
 
 .dash { color: var(--faint); font-weight: 650; }
 
+/* ---------- 热量小结 ---------- */
+.heat-card {
+  margin-top: 12px;
+  padding: 13px 14px 12px;
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  background: linear-gradient(135deg, var(--card-soft), var(--card));
+}
+
+.heat-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.heat-head h3 {
+  margin: 0;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--muted);
+}
+
+.heat-head span { font-size: 9px; color: var(--faint); }
+
+.heat-total {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  margin-top: 7px;
+}
+
+.heat-total b {
+  font-size: 22px;
+  font-weight: 850;
+  letter-spacing: -.03em;
+  font-variant-numeric: tabular-nums;
+}
+
+.heat-total span {
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.heat-sub {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px dashed var(--line);
+}
+
+.heat-sub > div { text-align: center; }
+
+.heat-sub b {
+  display: block;
+  font-size: 13.5px;
+  font-weight: 800;
+  letter-spacing: -.02em;
+  font-variant-numeric: tabular-nums;
+}
+
+.heat-sub span {
+  display: block;
+  margin-top: 3px;
+  font-size: 9px;
+  color: var(--muted);
+}
+
+.heat-note {
+  margin: 10px 0 0;
+  font-size: 9.5px;
+  line-height: 1.55;
+  color: var(--faint);
+}
+
 .fav {
   display: flex;
   align-items: center;
@@ -641,6 +754,7 @@ button { cursor: pointer; }
 
 .donut-seg.coffee { stroke: var(--coffee); }
 .donut-seg.tea { stroke: var(--tea); }
+.donut-seg.chasui { stroke: var(--chasui); }
 .donut-seg.other { stroke: var(--other); }
 
 .donut-center {
@@ -884,6 +998,7 @@ button { cursor: pointer; }
 
 .rec-icon.coffee { background: var(--coffee-tint); color: var(--coffee); }
 .rec-icon.tea { background: var(--tea-tint); color: var(--tea); }
+.rec-icon.chasui { background: var(--chasui-tint); color: var(--chasui); }
 .rec-icon.other { background: var(--other-tint); color: var(--other); }
 .rec-icon .cup { width: 18px; height: 18px; filter: none; }
 
@@ -926,6 +1041,31 @@ button { cursor: pointer; }
 }
 
 .rec-spec .mood { font-size: 12px; margin-left: 1px; }
+
+.rec-extra {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 5px;
+  margin-top: 5px;
+}
+
+.rec-kcal {
+  padding: 1px 6px;
+  border-radius: 6px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 9.5px;
+  font-weight: 750;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.rec-toppings {
+  font-size: 10px;
+  line-height: 1.4;
+  color: var(--muted);
+}
 
 .rec-note {
   margin-top: 4px;
@@ -1081,8 +1221,11 @@ button { cursor: pointer; }
   color: var(--accent);
 }
 
+.type-seg button { font-size: 11.5px; padding-left: 0; padding-right: 0; }
+
 .type-seg button[data-val="coffee"][aria-pressed="true"] { color: var(--coffee); }
 .type-seg button[data-val="tea"][aria-pressed="true"] { color: var(--tea); }
+.type-seg button[data-val="chasui"][aria-pressed="true"] { color: var(--chasui); }
 .type-seg button[data-val="other"][aria-pressed="true"] { color: var(--other); }
 
 .sugar-seg button { font-size: 10.5px; }
@@ -1163,6 +1306,79 @@ button { cursor: pointer; }
   border-color: var(--accent);
   color: var(--accent);
   box-shadow: 0 2px 6px var(--accent-soft);
+}
+
+.chips button em {
+  margin-left: 3px;
+  font-style: normal;
+  font-size: 8.5px;
+  font-weight: 500;
+  color: var(--faint);
+}
+
+.chips button[aria-pressed="true"] em { color: var(--accent); opacity: .78; }
+
+.field-hint {
+  margin: 7px 0 0 2px;
+  font-size: 9.5px;
+  line-height: 1.5;
+  color: var(--faint);
+}
+
+/* 表单内的实时热量预估 */
+.cal-preview {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 2px 0 13px;
+  padding: 11px 13px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--card);
+}
+
+.cal-preview-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 0 0 auto;
+}
+
+.cal-preview-label {
+  font-size: 9px;
+  letter-spacing: .04em;
+  color: var(--muted);
+}
+
+.cal-preview-main b {
+  font-size: 17px;
+  font-weight: 850;
+  letter-spacing: -.03em;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.cal-preview-main b span {
+  margin-left: 2px;
+  font-size: 9.5px;
+  font-weight: 600;
+  color: var(--muted);
+}
+
+.cal-preview-note {
+  flex: 1;
+  margin: 0;
+  font-size: 9.5px;
+  line-height: 1.55;
+  color: var(--muted);
+  text-align: right;
+}
+
+.cal-preview-note span {
+  display: block;
+  margin-top: 1px;
+  font-size: 9px;
+  color: var(--faint);
 }
 
 .moods { display: flex; gap: 7px; }
@@ -1318,9 +1534,10 @@ button { cursor: pointer; }
         <div class="legend" aria-label="饮品颜色图例">
           <span><i class="dot coffee"></i>咖啡</span>
           <span><i class="dot tea"></i>奶茶</span>
+          <span><i class="dot chasui"></i>茶饮</span>
           <span><i class="dot other"></i>其他</span>
         </div>
-        <span class="cal-hint">轻点日期 · 可滑动</span>
+        <button class="kcal-toggle" id="kcalToggle" type="button" aria-pressed="false" aria-label="在日历中显示每日热量合计">热量</button>
       </div>
     </section>
 
@@ -1346,6 +1563,21 @@ button { cursor: pointer; }
           <div class="metric-val" id="mStreak">0<span>天</span></div>
           <div class="metric-label">连续打卡</div>
         </div>
+      </div>
+      <div class="heat-card" id="heatCard">
+        <div class="heat-head">
+          <h3>热量估算</h3>
+          <span>仅供参考</span>
+        </div>
+        <div class="heat-total">
+          <b id="mKcal">≈ 0</b><span>kcal · 本月合计</span>
+        </div>
+        <div class="heat-sub">
+          <div><b id="mKcalAvg">0</b><span>日均（打卡天）</span></div>
+          <div><b id="mKcalCup">0</b><span>单杯平均</span></div>
+          <div><b id="mSugarAvg">—</b><span>平均甜度</span></div>
+        </div>
+        <p class="heat-note">按名称、杯量、甜度、冰热与加料粗估，非营养数据，仅供参考。</p>
       </div>
       <div class="fav">
         <svg class="fav-cup" viewBox="0 0 24 24" aria-hidden="true">
@@ -1416,6 +1648,7 @@ button { cursor: pointer; }
         <div class="seg type-seg" id="typeSeg">
           <button type="button" data-val="coffee" aria-pressed="true">☕ 咖啡</button>
           <button type="button" data-val="tea" aria-pressed="false">🧋 奶茶</button>
+          <button type="button" data-val="chasui" aria-pressed="false">🍵 茶饮</button>
           <button type="button" data-val="other" aria-pressed="false">🍹 其他</button>
         </div>
       </div>
@@ -1456,6 +1689,12 @@ button { cursor: pointer; }
       </div>
 
       <div class="field">
+        <label>加料（可多选）</label>
+        <div class="chips" id="toppingChips"></div>
+        <p class="field-hint">加料按固定份量估算，会计入下方热量。</p>
+      </div>
+
+      <div class="field">
         <label for="priceInput">花了多少</label>
         <div class="price-wrap">
           <span>¥</span>
@@ -1471,6 +1710,14 @@ button { cursor: pointer; }
       <div class="field">
         <label for="noteInput">小小备注</label>
         <input class="input" id="noteInput" type="text" maxlength="40" placeholder="给这杯留一句话（选填）">
+      </div>
+
+      <div class="cal-preview" aria-live="polite">
+        <div class="cal-preview-main">
+          <span class="cal-preview-label">这杯大约</span>
+          <b id="calPreviewVal">≈ 0<span> kcal</span></b>
+        </div>
+        <p class="cal-preview-note" id="calPreviewNote">估算值仅供参考</p>
       </div>
 
       <button class="primary-btn" id="saveBtn" type="submit">记下这杯</button>
@@ -1496,17 +1743,20 @@ button { cursor: pointer; }
   var STORAGE_KEY = 'bgbj.records.v1';
   var THEME_KEY = 'bgbj.theme';
   var GUIDE_KEY = 'bgbj.guide.v1';
+  var KCAL_KEY = 'bgbj.kcal.v1';
 
   var TYPES = {
     coffee: { label: '咖啡', emoji: '☕', order: 0 },
     tea: { label: '奶茶', emoji: '🧋', order: 1 },
-    other: { label: '其他', emoji: '🍹', order: 2 }
+    chasui: { label: '茶饮', emoji: '🍵', order: 2 },
+    other: { label: '其他', emoji: '🍹', order: 3 }
   };
 
   var NAMES = {
     coffee: ['美式', '拿铁', '生椰拿铁', '卡布奇诺', '澳白', '摩卡'],
-    tea: ['珍珠奶茶', '芋泥波波', '椰乳茶', '水果茶', '抹茶拿铁'],
-    other: ['柠檬茶', '气泡水', '鲜榨果汁', '纯茶', '热可可']
+    tea: ['珍珠奶茶', '芋泥波波', '椰乳茶', '抹茶拿铁', '黑糖奶茶'],
+    chasui: ['乌龙茶', '绿茶', '柠檬茶', '水果茶', '纯茶', '气泡茶'],
+    other: ['气泡水', '鲜榨果汁', '热可可', '酸奶', '豆浆']
   };
 
   var SIZES = ['小', '中', '大'];
@@ -1514,6 +1764,56 @@ button { cursor: pointer; }
   var SUGARS = ['无糖', '三分糖', '五分糖', '七分糖', '全糖'];
   var MOODS = ['😌', '😋', '🤩', '🥱', '😴', '🥰'];
   var WEEKDAYS = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
+
+  /* ---------- 热量估算口径 ----------
+     基准 = 中杯、无糖、热饮的液体热量（奶基底已体现在基准值里）
+     总计 = (基准 + 甜度增量 + 加料增量) × 杯量系数 × 冰饮系数，取整到 5 kcal
+     数值为粗略估算，仅作参考，不是营养标签数据 */
+  var SIZE_FACTOR = { '小': .75, '中': 1, '大': 1.32 };
+  var TEMP_FACTOR = { '冰': .96, '热': 1 };
+  var SUGAR_ADD = { '无糖': 0, '三分糖': 40, '五分糖': 70, '七分糖': 100, '全糖': 135 };
+  var SUGAR_SCORE = { '无糖': 0, '三分糖': 1, '五分糖': 2, '七分糖': 3, '全糖': 4 };
+  var TOPPINGS = [
+    { name: '珍珠', kcal: 60 },
+    { name: '椰果', kcal: 45 },
+    { name: '布丁', kcal: 55 },
+    { name: '奶盖', kcal: 90 },
+    { name: '芋泥', kcal: 100 }
+  ];
+  var TOPPING_KCAL = {};
+  TOPPINGS.forEach(function (t) { TOPPING_KCAL[t.name] = t.kcal; });
+
+  /* 名称关键字基准，按顺序匹配（先匹配到的生效）；基准已包含同名加料 */
+  var CAL_RULES = [
+    { keys: ['生椰'], kcal: 230 },
+    { keys: ['芋泥', '波波'], kcal: 320 },
+    { keys: ['珍珠', '波霸'], kcal: 250 },
+    { keys: ['奶盖'], kcal: 210 },
+    { keys: ['布丁'], kcal: 230 },
+    { keys: ['椰果'], kcal: 220 },
+    { keys: ['奶茶'], kcal: 175 },
+    { keys: ['抹茶'], kcal: 210 },
+    { keys: ['美式', '浓缩', '冷萃', '黑咖啡'], kcal: 8 },
+    { keys: ['摩卡', '可可', '巧克力'], kcal: 280 },
+    { keys: ['拿铁', '澳白', '卡布', '馥芮白', '玛奇朵'], kcal: 185 },
+    { keys: ['柠檬茶', '水果茶', '果茶'], kcal: 75 },
+    { keys: ['气泡茶'], kcal: 25 },
+    { keys: ['气泡水', '苏打'], kcal: 0 },
+    { keys: ['纯茶', '乌龙', '绿茶', '红茶', '茉莉', '普洱', '白茶', '龙井', '毛尖', '煎茶'], kcal: 0 },
+    { keys: ['果汁', '鲜榨'], kcal: 120 },
+    { keys: ['酸奶'], kcal: 160 },
+    { keys: ['豆浆'], kcal: 110 },
+    { keys: ['椰青', '椰子水'], kcal: 45 }
+  ];
+  var TYPE_BASE = { coffee: 60, tea: 175, chasui: 20, other: 60 };
+  /* 名称里已经含有的加料，勾选同名加料时不重复计算 */
+  var TOPPING_ALIAS = {
+    '珍珠': ['珍珠', '波霸'],
+    '芋泥': ['芋泥', '波波'],
+    '奶盖': ['奶盖'],
+    '椰果': ['椰果'],
+    '布丁': ['布丁']
+  };
 
   /* ---------- DOM ---------- */
   var $ = function (sel) { return document.querySelector(sel); };
@@ -1527,6 +1827,12 @@ button { cursor: pointer; }
   var mSpend = $('#mSpend');
   var mAvg = $('#mAvg');
   var mStreak = $('#mStreak');
+  var heatCard = $('#heatCard');
+  var mKcal = $('#mKcal');
+  var mKcalAvg = $('#mKcalAvg');
+  var mKcalCup = $('#mKcalCup');
+  var mSugarAvg = $('#mSugarAvg');
+  var kcalToggle = $('#kcalToggle');
   var favText = $('#favText');
   var distHead = $('#distHead');
   var distBody = $('#distBody');
@@ -1557,6 +1863,9 @@ button { cursor: pointer; }
   var sizeSeg = $('#sizeSeg');
   var tempSeg = $('#tempSeg');
   var sugarSeg = $('#sugarSeg');
+  var toppingChips = $('#toppingChips');
+  var calPreviewVal = $('#calPreviewVal');
+  var calPreviewNote = $('#calPreviewNote');
   var saveBtn = $('#saveBtn');
   var toastEl = $('#toast');
   var importFile = $('#importFile');
@@ -1567,7 +1876,8 @@ button { cursor: pointer; }
     view: new Date(new Date().getFullYear(), new Date().getMonth(), 1),
     sheetDate: null,
     editingId: null,
-    bounceDate: null
+    bounceDate: null,
+    showKcal: false
   };
 
   var toastTimer = null;
@@ -1658,6 +1968,14 @@ button { cursor: pointer; }
       if (isFinite(n) && n >= 0) price = Math.min(Math.round(n * 100) / 100, 9999);
     }
 
+    /* 老记录没有 toppings 字段，按空数组处理；无法识别的加料忽略 */
+    var toppings = [];
+    if (Array.isArray(raw.toppings)) {
+      raw.toppings.forEach(function (t) {
+        if (TOPPING_KCAL[t] && toppings.indexOf(t) < 0) toppings.push(t);
+      });
+    }
+
     return {
       id: (typeof raw.id === 'string' && raw.id) ? raw.id : uid(),
       date: date,
@@ -1666,6 +1984,7 @@ button { cursor: pointer; }
       size: size,
       temp: temp,
       sugar: sugar,
+      toppings: toppings,
       price: price,
       mood: mood,
       note: String(raw.note || '').slice(0, 40),
@@ -1704,7 +2023,7 @@ button { cursor: pointer; }
     var list = [];
     var seq = 0;
 
-    function add(dateObj, type, name, size, temp, sugar, price, mood, note) {
+    function add(dateObj, type, name, size, temp, sugar, price, mood, note, toppings) {
       list.push({
         id: uid(),
         date: ymd(dateObj),
@@ -1713,6 +2032,7 @@ button { cursor: pointer; }
         size: size,
         temp: temp,
         sugar: sugar,
+        toppings: toppings || [],
         price: price,
         mood: mood,
         note: note,
@@ -1724,33 +2044,86 @@ button { cursor: pointer; }
 
     /* 上个月的几条足迹，切回上个月也能看到内容 */
     var prevSamples = [
-      ['拿铁', '中', '热', '三分糖', 22, '😌', '阴天里的一点暖'],
-      ['珍珠奶茶', '大', '冰', '五分糖', 18, '😋', ''],
-      ['美式', '中', '冰', '无糖', 15, '🥱', '赶稿必备'],
-      ['芋泥波波', '中', '冰', '七分糖', 20, '🥰', '芋泥给得很足'],
-      ['柠檬茶', '中', '冰', '三分糖', 12, '😋', ''],
-      ['生椰拿铁', '大', '冰', '三分糖', 19, '🤩', '椰香刚刚好'],
-      ['热可可', '小', '热', '全糖', 16, '😴', ''],
-      ['水果茶', '大', '冰', '五分糖', 18, '😌', '下午的续命水'],
-      ['摩卡', '中', '热', '七分糖', 24, '😋', '奶油有点多']
+      ['coffee', '拿铁', '中', '热', '三分糖', 22, '😌', '阴天里的一点暖', []],
+      ['tea', '珍珠奶茶', '大', '冰', '五分糖', 18, '😋', '', ['珍珠']],
+      ['coffee', '美式', '中', '冰', '无糖', 15, '🥱', '赶稿必备', []],
+      ['tea', '芋泥波波', '中', '冰', '七分糖', 20, '🥰', '芋泥给得很足', ['芋泥']],
+      ['chasui', '柠檬茶', '中', '冰', '三分糖', 12, '😋', '', []],
+      ['coffee', '生椰拿铁', '大', '冰', '三分糖', 19, '🤩', '椰香刚刚好', []],
+      ['other', '热可可', '小', '热', '全糖', 16, '😴', '', []],
+      ['chasui', '水果茶', '大', '冰', '五分糖', 18, '😌', '下午的续命水', []],
+      ['coffee', '摩卡', '中', '热', '七分糖', 24, '😋', '奶油有点多', []]
     ];
 
     prevSamples.forEach(function (s, i) {
       var date = new Date(y, m - 1, 3 + i * 3);
-      add(date, i % 3 === 0 ? 'coffee' : (i % 3 === 1 ? 'tea' : 'other'), s[0], s[1], s[2], s[3], s[4], s[5], s[6]);
+      add(date, s[0], s[1], s[2], s[3], s[4], s[5], s[6], s[7], s[8]);
     });
 
     /* 本月：1 号以及今天，留几条可以玩的示例 */
-    add(new Date(y, m, 1), 'coffee', '美式', '中', '冰', '无糖', 15, '🥱', '新的一月，先醒醒神');
-    add(new Date(y, m, 1), 'tea', '珍珠奶茶', '大', '冰', '五分糖', 18, '😋', '下午的小奖励');
+    add(new Date(y, m, 1), 'coffee', '美式', '中', '冰', '无糖', 15, '🥱', '新的一月，先醒醒神', []);
+    add(new Date(y, m, 1), 'tea', '珍珠奶茶', '大', '冰', '五分糖', 18, '😋', '下午的小奖励', ['珍珠']);
+    add(new Date(y, m, 1), 'chasui', '乌龙茶', '中', '热', '无糖', 10, '😌', '今天想喝点清爽的', []);
 
     if (today >= 2) {
-      add(new Date(y, m, today), 'coffee', '美式', '中', '冰', '无糖', 15, '😌', '开会续命');
-      add(new Date(y, m, today), 'coffee', '生椰拿铁', '大', '冰', '三分糖', 19, '🤩', '椰香刚刚好');
-      add(new Date(y, m, today), 'other', '柠檬茶', '中', '冰', '三分糖', 12, '😋', '解腻神器');
+      add(new Date(y, m, today), 'coffee', '美式', '中', '冰', '无糖', 15, '😌', '开会续命', []);
+      add(new Date(y, m, today), 'coffee', '生椰拿铁', '大', '冰', '三分糖', 19, '🤩', '椰香刚刚好', []);
+      add(new Date(y, m, today), 'chasui', '柠檬茶', '中', '冰', '三分糖', 12, '😋', '解腻神器', []);
     }
 
     return list;
+  }
+
+  /* ---------- 热量估算 ---------- */
+  function emptyTypeCounts() {
+    var counts = {};
+    Object.keys(TYPES).forEach(function (k) { counts[k] = 0; });
+    return counts;
+  }
+
+  function baseKcalOf(name, type) {
+    var nm = String(name || '').replace(/[\s·、]/g, '');
+    for (var i = 0; i < CAL_RULES.length; i++) {
+      var keys = CAL_RULES[i].keys;
+      for (var j = 0; j < keys.length; j++) {
+        if (nm.indexOf(keys[j]) > -1) return CAL_RULES[i].kcal;
+      }
+    }
+    return TYPE_BASE[type] !== undefined ? TYPE_BASE[type] : 60;
+  }
+
+  function estimateKcal(record) {
+    var sizeFactor = SIZE_FACTOR[record.size] || 1;
+    var tempFactor = TEMP_FACTOR[record.temp] || 1;
+    var base = baseKcalOf(record.name, record.type);
+    var sugarAdd = SUGAR_ADD[record.sugar] || 0;
+    var nm = String(record.name || '');
+    var toppingAdd = 0;
+    (Array.isArray(record.toppings) ? record.toppings : []).forEach(function (t) {
+      var alias = TOPPING_ALIAS[t] || [t];
+      var alreadyInName = alias.some(function (key) { return nm.indexOf(key) > -1; });
+      if (!alreadyInName) toppingAdd += TOPPING_KCAL[t] || 0;
+    });
+
+    var raw = (base + sugarAdd + toppingAdd) * sizeFactor * tempFactor;
+    var kcal = raw > 0 ? Math.round(raw / 5) * 5 : 0;
+
+    return {
+      kcal: kcal,
+      base: base,
+      sugar: sugarAdd,
+      toppings: toppingAdd,
+      sizeFactor: sizeFactor,
+      tempFactor: tempFactor
+    };
+  }
+
+  function kcalOf(record) {
+    return estimateKcal(record).kcal;
+  }
+
+  function sumKcal(records) {
+    return records.reduce(function (sum, r) { return sum + kcalOf(r); }, 0);
   }
 
   /* ---------- 统计 ---------- */
@@ -1805,13 +2178,15 @@ button { cursor: pointer; }
       var cls = 'day';
       var dominant = '';
       var cupHtml = '';
+      var kcalHtml = '';
+      var kcalSum = 0;
       var label;
 
       if (!inMonth) cls += ' other';
 
       if (count) {
         cls += ' has';
-        var typeCount = { coffee: 0, tea: 0, other: 0 };
+        var typeCount = emptyTypeCounts();
         recs.forEach(function (r) { typeCount[r.type]++; });
         dominant = Object.keys(typeCount).sort(function (a, b) {
           return (typeCount[b] - typeCount[a]) || (TYPES[a].order - TYPES[b].order);
@@ -1819,6 +2194,10 @@ button { cursor: pointer; }
         cupHtml = '<div class="cups' + (state.bounceDate === ds ? ' bounce' : '') + '">' +
           recs.slice(0, 3).map(function (r) { return cupSVG(r.type); }).join('') +
           '</div>';
+        kcalSum = sumKcal(recs);
+        if (state.showKcal) {
+          kcalHtml = '<span class="day-kcal">≈' + kcalSum + '</span>';
+        }
       }
 
       if (ds === today) cls += ' today';
@@ -1828,7 +2207,9 @@ button { cursor: pointer; }
 
       if (inMonth) {
         label = (m + 1) + '月' + d.getDate() + '日' + (ds === today ? '，今天' : '') +
-          (count ? '，' + count + '杯：' + recs.map(function (r) { return r.name; }).join('、') : '，还没有记录');
+          (count
+            ? '，' + count + '杯，约' + kcalSum + '千卡：' + recs.map(function (r) { return r.name; }).join('、')
+            : '，还没有记录');
       } else {
         label = '';
       }
@@ -1839,10 +2220,11 @@ button { cursor: pointer; }
         '>' +
         '<span class="num">' + d.getDate() + '</span>' +
         cupHtml +
-        badge +
+        badge + kcalHtml +
         '</button>';
     }
 
+    calendarGrid.classList.toggle('show-kcal', state.showKcal);
     calendarGrid.innerHTML = html;
     calendarGrid.classList.remove('enter-next', 'enter-prev');
     if (dir) {
@@ -1891,13 +2273,30 @@ button { cursor: pointer; }
       : '¥' + fmtMoney(Math.round(avg * 10) / 10);
     mStreak.innerHTML = calcStreak() + '<span>天</span>';
 
+    /* 热量小结：日均按“有记录的天数”计算，避免空白天拉低 */
+    var totalKcal = sumKcal(recs);
+    var dayKeys = {};
+    recs.forEach(function (r) { dayKeys[r.date] = true; });
+    var recordDays = Object.keys(dayKeys).length;
+    var avgKcal = recordDays ? Math.round(totalKcal / recordDays) : 0;
+    var cupKcal = total ? Math.round(totalKcal / total) : 0;
+    var sugarScore = total
+      ? recs.reduce(function (sum, r) { return sum + (SUGAR_SCORE[r.sugar] || 0); }, 0) / total
+      : null;
+
+    heatCard.hidden = total === 0;
+    mKcal.innerHTML = '≈ ' + totalKcal;
+    mKcalAvg.textContent = String(avgKcal);
+    mKcalCup.textContent = String(cupKcal);
+    mSugarAvg.textContent = sugarScore === null ? '—' : SUGARS[Math.round(sugarScore)];
+
     if (favourite) {
       favText.innerHTML = '最常喝 <b>' + esc(favourite.name) + '</b> <span>· ' + favourite.count + ' 杯</span>';
     } else {
       favText.textContent = '还没有常客，第一杯在等你';
     }
 
-    var counts = { coffee: 0, tea: 0, other: 0 };
+    var counts = emptyTypeCounts();
     recs.forEach(function (r) { counts[r.type]++; });
 
     if (!total) {
@@ -1954,15 +2353,19 @@ button { cursor: pointer; }
 
     var priced = recs.filter(function (r) { return typeof r.price === 'number' && r.price > 0; });
     var spend = priced.reduce(function (sum, r) { return sum + r.price; }, 0);
+    var dayKcal = sumKcal(recs);
     sheetSub.textContent = WEEKDAYS[d.getDay()] + ' · ' +
       (recs.length
-        ? '已记 ' + recs.length + ' 杯' + (spend > 0 ? ' · ¥' + fmtMoney(spend) : '')
+        ? '已记 ' + recs.length + ' 杯 · ≈' + dayKcal + ' kcal' + (spend > 0 ? ' · ¥' + fmtMoney(spend) : '')
         : '还没记录');
 
     if (recs.length) {
       dayRecords.innerHTML = recs.map(function (r) {
         var price = (typeof r.price === 'number' && r.price > 0) ? '<span class="rec-price">¥' + fmtMoney(r.price) + '</span>' : '';
         var note = r.note ? '<div class="rec-note">“' + esc(r.note) + '”</div>' : '';
+        var toppings = (Array.isArray(r.toppings) && r.toppings.length)
+          ? '<span class="rec-toppings">加料 ' + esc(r.toppings.join('、')) + '</span>'
+          : '';
         return '<div class="rec-item">' +
           '<div class="rec-icon ' + r.type + '">' + cupSVG(r.type) + '</div>' +
           '<div class="rec-main">' +
@@ -1970,6 +2373,7 @@ button { cursor: pointer; }
               (r.sample ? '<span class="sample-tag">示例</span>' : '') + price + '</div>' +
             '<div class="rec-spec">' + r.size + '杯 · ' + r.temp + ' · ' + r.sugar +
               ' <span class="mood">' + r.mood + '</span></div>' +
+            '<div class="rec-extra"><span class="rec-kcal">≈ ' + kcalOf(r) + ' kcal</span>' + toppings + '</div>' +
             note +
           '</div>' +
           '<div class="rec-actions">' +
@@ -1980,7 +2384,7 @@ button { cursor: pointer; }
       }).join('');
     } else {
       dayRecords.innerHTML = '<div class="empty-day">' + emptyCupSVG() +
-        '<p>这天还没有饮品记录</p><span>奶茶、咖啡，还是别的什么？</span></div>';
+        '<p>这天还没有饮品记录</p><span>咖啡、奶茶，还是来杯茶？</span></div>';
     }
 
     addBtn.hidden = state.editingId !== null;
@@ -2062,6 +2466,48 @@ button { cursor: pointer; }
     return active ? active.dataset.mood : '😌';
   }
 
+  function buildToppings() {
+    toppingChips.innerHTML = TOPPINGS.map(function (t) {
+      return '<button type="button" data-topping="' + t.name + '" aria-pressed="false">' +
+        t.name + ' <em>+' + t.kcal + '</em></button>';
+    }).join('');
+  }
+
+  function getToppings() {
+    var picked = [];
+    Array.prototype.forEach.call(toppingChips.children, function (btn) {
+      if (btn.getAttribute('aria-pressed') === 'true') picked.push(btn.dataset.topping);
+    });
+    return picked;
+  }
+
+  function setToppings(list) {
+    var picked = Array.isArray(list) ? list : [];
+    Array.prototype.forEach.call(toppingChips.children, function (btn) {
+      btn.setAttribute('aria-pressed', picked.indexOf(btn.dataset.topping) > -1 ? 'true' : 'false');
+    });
+  }
+
+  function updatePreview() {
+    var type = getSeg(typeSeg) || 'coffee';
+    var size = getSeg(sizeSeg) || '中';
+    var temp = getSeg(tempSeg) || '冰';
+    var sugar = getSeg(sugarSeg) || '三分糖';
+    var tops = getToppings();
+    var est = estimateKcal({
+      type: type,
+      name: nameInput.value.trim() || NAMES[type][0],
+      size: size,
+      temp: temp,
+      sugar: sugar,
+      toppings: tops
+    });
+
+    calPreviewVal.innerHTML = '≈ ' + est.kcal + '<span> kcal</span>';
+    calPreviewNote.innerHTML = '按' + size + '杯 · ' + temp + ' · ' + sugar +
+      (tops.length ? ' · 加' + tops.join('、') : '') + ' 粗估' + '<span>估算值，仅供参考</span>';
+  }
+
   function buildChips(type) {
     nameChips.innerHTML = NAMES[type].map(function (name) {
       return '<button type="button" data-name="' + esc(name) + '" aria-pressed="false">' + esc(name) + '</button>';
@@ -2087,6 +2533,7 @@ button { cursor: pointer; }
 
   function resetForm() {
     setSeg(typeSeg, 'coffee');
+    setToppings([]);
     selectType('coffee', true);
     setSeg(sizeSeg, '中');
     setSeg(tempSeg, '冰');
@@ -2098,6 +2545,7 @@ button { cursor: pointer; }
     syncChips();
     formTitle.textContent = '记一杯';
     saveBtn.textContent = '记下这杯';
+    updatePreview();
   }
 
   function startAdd() {
@@ -2124,12 +2572,14 @@ button { cursor: pointer; }
     setSeg(sizeSeg, record.size);
     setSeg(tempSeg, record.temp);
     setSeg(sugarSeg, record.sugar);
+    setToppings(record.toppings);
     setMood(record.mood);
     priceInput.value = (typeof record.price === 'number') ? String(record.price) : '';
     noteInput.value = record.note || '';
 
     formTitle.textContent = '编辑这一杯';
     saveBtn.textContent = '保存修改';
+    updatePreview();
 
     setTimeout(function () {
       form.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
@@ -2174,6 +2624,7 @@ button { cursor: pointer; }
       size: getSeg(sizeSeg) || '中',
       temp: getSeg(tempSeg) || '冰',
       sugar: getSeg(sugarSeg) || '三分糖',
+      toppings: getToppings(),
       price: price,
       mood: getMood(),
       note: noteInput.value.trim().slice(0, 40)
@@ -2184,7 +2635,7 @@ button { cursor: pointer; }
       var target = state.records.find(function (r) { return r.id === state.editingId; });
       if (target) {
         Object.assign(target, payload, { sample: false, createdAt: target.createdAt || Date.now() });
-        message = '这杯已经更新好啦';
+        message = '这杯已经更新好啦：约 ' + kcalOf(target) + ' kcal';
       }
     } else {
       state.records.push(Object.assign({
@@ -2192,7 +2643,7 @@ button { cursor: pointer; }
         createdAt: Date.now(),
         sample: false
       }, payload));
-      message = '记下啦：' + payload.temp + payload.name;
+      message = '记下啦：' + payload.temp + payload.name + ' · 约 ' + kcalOf(payload) + ' kcal';
     }
 
     var savedDate = state.sheetDate;
@@ -2437,6 +2888,7 @@ button { cursor: pointer; }
       var currentName = nameInput.value.trim();
       var autoName = !currentName || allNames.indexOf(currentName) > -1;
       selectType(nextType, autoName);
+      updatePreview();
     });
 
     /* 其他分段控件 */
@@ -2445,7 +2897,16 @@ button { cursor: pointer; }
         var btn = event.target.closest('button[data-val]');
         if (!btn) return;
         setSeg(seg, btn.dataset.val);
+        updatePreview();
       });
+    });
+
+    /* 加料多选 */
+    toppingChips.addEventListener('click', function (event) {
+      var btn = event.target.closest('button[data-topping]');
+      if (!btn) return;
+      btn.setAttribute('aria-pressed', btn.getAttribute('aria-pressed') === 'true' ? 'false' : 'true');
+      updatePreview();
     });
 
     /* 名字快捷选项 */
@@ -2454,8 +2915,20 @@ button { cursor: pointer; }
       if (!btn) return;
       nameInput.value = btn.dataset.name;
       syncChips();
+      updatePreview();
     });
-    nameInput.addEventListener('input', syncChips);
+    nameInput.addEventListener('input', function () {
+      syncChips();
+      updatePreview();
+    });
+
+    /* 日历热量合计开关 */
+    kcalToggle.addEventListener('click', function () {
+      state.showKcal = !state.showKcal;
+      kcalToggle.setAttribute('aria-pressed', state.showKcal ? 'true' : 'false');
+      storageSet(KCAL_KEY, state.showKcal ? '1' : '0');
+      renderCalendar(0);
+    });
 
     /* 心情 */
     moodRow.addEventListener('click', function (event) {
@@ -2499,8 +2972,11 @@ button { cursor: pointer; }
 
     state.records = loadRecords();
     state.view = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+    state.showKcal = storageGet(KCAL_KEY) === '1';
 
     buildMoods();
+    buildToppings();
+    kcalToggle.setAttribute('aria-pressed', state.showKcal ? 'true' : 'false');
     resetForm();
     bindEvents();
     renderAll(0);
